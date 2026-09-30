@@ -114,7 +114,7 @@ public final class Subscription {
         return status;
     }
 
-    /** How often a period comes round: monthly or yearly. */
+    /** How often a period comes round: monthly or annually. */
     public String getPeriod() {
         return period;
     }

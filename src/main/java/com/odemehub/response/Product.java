@@ -74,7 +74,7 @@ public final class Product {
         return taxRate;
     }
 
-    /** monthly or yearly for a recurring product; null for a simple one. */
+    /** monthly or annually for a recurring product; null for a simple one. */
     public String getPeriod() {
         return period;
     }

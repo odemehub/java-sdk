@@ -105,7 +105,7 @@ public final class SaveProduct extends ChannelMessage {
             return this;
         }
 
-        /** How often a recurring product comes round: "monthly" or "yearly". Only a recurring product has one. */
+        /** How often a recurring product comes round: "monthly" or "annually". Only a recurring product has one. */
         public Builder period(String period) {
             this.period = period;
             return this;
