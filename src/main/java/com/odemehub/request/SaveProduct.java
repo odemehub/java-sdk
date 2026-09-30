@@ -23,6 +23,7 @@ public final class SaveProduct extends ChannelMessage {
     private final String period;
     private final String currency;
     private final Boolean isActive;
+    private final String image;
 
     private SaveProduct(Builder builder) {
         super(builder.channelToken);
@@ -34,6 +35,7 @@ public final class SaveProduct extends ChannelMessage {
         this.period = builder.period;
         this.currency = builder.currency;
         this.isActive = builder.isActive;
+        this.image = builder.image;
     }
 
     public static Builder builder() {
@@ -52,6 +54,7 @@ public final class SaveProduct extends ChannelMessage {
                 "channel_token", channel(channelToken),
                 "channel_reference", channelReference,
                 "name", name,
+                "image", image,
                 "type", type,
                 "amount", amount,
                 "currency", currency,
@@ -72,6 +75,7 @@ public final class SaveProduct extends ChannelMessage {
         private String period;
         private String currency;
         private Boolean isActive;
+        private String image;
 
         private Builder() {
         }
@@ -125,6 +129,16 @@ public final class SaveProduct extends ChannelMessage {
 
         @Override
         protected Builder self() {
+            return this;
+        }
+
+        /**
+         * The https address of the picture the checkout shows it with. Left
+         * out, the product keeps the picture it has; an empty string takes it
+         * off.
+         */
+        public Builder image(String image) {
+            this.image = image;
             return this;
         }
 

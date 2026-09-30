@@ -11,6 +11,7 @@ public final class Product {
     private final String channelToken;
     private final String channelReference;
     private final String name;
+    private final String image;
     private final String type;
     private final String amount;
     private final String currency;
@@ -25,6 +26,7 @@ public final class Product {
         this.channelToken = Read.string(product.path("channel_token"));
         this.channelReference = Read.string(product.path("channel_reference"));
         this.name = Read.string(product.path("name"));
+        this.image = Read.optionalString(product.path("image"));
         this.type = Read.string(product.path("type"));
         this.amount = Read.string(product.path("amount"));
         this.currency = Read.string(product.path("currency"));
@@ -53,6 +55,11 @@ public final class Product {
 
     public String getName() {
         return name;
+    }
+
+    /** The address of the picture the checkout shows it with; null when it has none. */
+    public String getImage() {
+        return image;
     }
 
     /** simple or recurring. */
@@ -86,7 +93,7 @@ public final class Product {
 
     @Override
     public String toString() {
-        return "Product[result=" + result + ", channelReference=" + channelReference + ", name=" + name + ", type=" + type
+        return "Product[result=" + result + ", channelReference=" + channelReference + ", name=" + name + ", image=" + image + ", type=" + type
             + ", amount=" + amount + ", currency=" + currency + ", period=" + period + ", isActive=" + isActive + "]";
     }
 }

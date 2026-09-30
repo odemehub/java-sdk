@@ -12,11 +12,13 @@ public final class SubscriptionItem {
     private final String channelReference;
     private final Integer quantity;
     private final String unitAmount;
+    private final String image;
 
     private SubscriptionItem(Builder builder) {
         this.channelReference = Fields.required(builder.channelReference, "channelReference");
         this.quantity = builder.quantity;
         this.unitAmount = builder.unitAmount;
+        this.image = builder.image;
     }
 
     public static Builder builder() {
@@ -34,7 +36,8 @@ public final class SubscriptionItem {
         return Fields.said(
             "channel_reference", channelReference,
             "quantity", quantity,
-            "unit_amount", unitAmount
+            "unit_amount", unitAmount,
+            "image", image
         );
     }
 
@@ -43,6 +46,7 @@ public final class SubscriptionItem {
         private String channelReference;
         private Integer quantity;
         private String unitAmount;
+        private String image;
 
         private Builder() {
         }
@@ -67,6 +71,12 @@ public final class SubscriptionItem {
          */
         public Builder unitAmount(String unitAmount) {
             this.unitAmount = unitAmount;
+            return this;
+        }
+
+        /** The https address of the picture shown at checkout for this line. Left out, the product's own picture is shown. */
+        public Builder image(String image) {
+            this.image = image;
             return this;
         }
 

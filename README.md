@@ -157,6 +157,7 @@ var product = client.saveProduct(SaveProduct.builder()
     .type("simple")          // simple | recurring
     .amount("450.00")
     .taxRate("20")           // fiyatın içindeki KDV oranı
+    .image("https://magazam.com/img/kahve-makinesi.jpg") // ödeme sayfasında gösterilir
     .build());
 
 client.saveProduct(SaveProduct.builder()
@@ -169,7 +170,7 @@ client.saveProduct(SaveProduct.builder()
     .build());
 ```
 
-Aynı kanalda aynı referans aynı üründür: tekrar gönderirseniz ikinci ürün açılmaz, mevcut olan güncellenir. `currency` verilmezse TRY, `isActive` verilmezse `true` kabul edilir. Ürün silinmez; `isActive(false)` ile satışa kapatılır.
+Aynı kanalda aynı referans aynı üründür: tekrar gönderirseniz ikinci ürün açılmaz, mevcut olan güncellenir. `currency` verilmezse TRY, `isActive` verilmezse `true` kabul edilir. Ürün silinmez; `isActive(false)` ile satışa kapatılır. `image` yalnızca `https://` adres alır; göndermezseniz ürün mevcut görselini (panelden yüklenmiş olanı da) korur, boş metin gönderirseniz görsel kaldırılır.
 
 Ödeme istekleri ürünü hiçbir zaman değiştirmez; ürünün tek yazıldığı yer bu çağrı ve panel.
 
@@ -189,20 +190,21 @@ var order = client.orderPayment(OrderPayment.builder()
     .items(List.of(
         OrderItem.of("KAHVE-MAKINESI"),
         OrderItem.builder().channelReference("KAHVE-500G").quantity(2).unitAmount("180.00").build(),
-        OrderItem.builder().channelReference("HEDIYE-PAKETI").name("Hediye paketi").unitAmount("25.00").build()
+        OrderItem.builder().channelReference("HEDIYE-PAKETI").name("Hediye paketi").unitAmount("25.00")
+            .image("https://magazam.com/img/hediye-paketi.jpg").build()
     ))
     .build());
 
 return "redirect:" + order.getCheckoutUrl();
 ```
 
-Sipariş tutarını göndermezsiniz; geçit kalemleri toplar ve `order.getAmount()` olarak döner. Bir kalemin boş bıraktığı ad, fiyat ve KDV oranı kayıtlı üründen gelir; kalemde verdiğiniz değerler yalnızca o sipariş için geçerlidir, ürünü değiştirmez. Kayıtlı olmayan bir referansla da kalem gönderebilirsiniz, ama o zaman `name` ve `unitAmount` zorunludur.
+Sipariş tutarını göndermezsiniz; geçit kalemleri toplar ve `order.getAmount()` olarak döner. Bir kalemin boş bıraktığı ad, fiyat ve KDV oranı kayıtlı üründen gelir; kalemde verdiğiniz değerler yalnızca o sipariş için geçerlidir, ürünü değiştirmez. Kayıtlı olmayan bir referansla da kalem gönderebilirsiniz, ama o zaman `name` ve `unitAmount` zorunludur. Kalemin `image` alanı (`https://` adres) ödeme sayfasında kalemin yanında gösterilir; verilmezse kayıtlı ürünün görseli kullanılır, ürün kayıtlı değilse kalem görselsiz görünür.
 
 Ödeme tamamlanınca müşteri, 3D'dekiyle aynı biçimde `successUrl` adresinize döner: aynı üç alan gelir, sonucu yine `retrievePayment()` ile sorarsınız. Müşteri ödeme sayfasında karttan kaynaklı bir hata alırsa size dönmez, sayfada kalıp başka kartla dener.
 
 ## Abonelikler
 
-Müşteriden dönem dönem tahsilat yapmak için abonelik açarsınız. Neye abone olunduğu bir ya da birkaç **abonelik ürünüdür** (`type("recurring")`), sizdeki referanslarıyla adlandırılır; fiyatı, para birimini ve dönemini ürün taşır. Aynı aboneliğe konan ürünlerin dönemi ve para birimi aynı olmalıdır.
+Müşteriden dönem dönem tahsilat yapmak için abonelik açarsınız. Neye abone olunduğu bir ya da birkaç **abonelik ürünüdür** (`type("recurring")`), sizdeki referanslarıyla adlandırılır; fiyatı, para birimini ve dönemini ürün taşır. Aynı aboneliğe konan ürünlerin dönemi ve para birimi aynı olmalıdır. Bir kaleme `image` (`https://` adres) verirseniz ödeme sayfasında ürünün görseli yerine o gösterilir.
 
 ```java
 import com.odemehub.request.SubscriptionItem;

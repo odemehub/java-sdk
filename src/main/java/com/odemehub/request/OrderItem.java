@@ -17,6 +17,7 @@ public final class OrderItem {
 
     private final String channelReference;
     private final String name;
+    private final String image;
     private final Integer quantity;
     private final String unitAmount;
     private final String taxRate;
@@ -24,6 +25,7 @@ public final class OrderItem {
     private OrderItem(Builder builder) {
         this.channelReference = Fields.required(builder.channelReference, "channelReference");
         this.name = builder.name;
+        this.image = builder.image;
         this.quantity = builder.quantity;
         this.unitAmount = builder.unitAmount;
         this.taxRate = builder.taxRate;
@@ -44,6 +46,7 @@ public final class OrderItem {
         return Fields.said(
             "channel_reference", channelReference,
             "name", name,
+            "image", image,
             "quantity", quantity,
             "unit_amount", unitAmount,
             "tax_rate", taxRate
@@ -54,6 +57,7 @@ public final class OrderItem {
 
         private String channelReference;
         private String name;
+        private String image;
         private Integer quantity;
         private String unitAmount;
         private String taxRate;
@@ -70,6 +74,12 @@ public final class OrderItem {
         /** Left out, the product's own name is shown. */
         public Builder name(String name) {
             this.name = name;
+            return this;
+        }
+
+        /** The https address of the picture shown beside the line at checkout. Left out, the product's own picture is shown. */
+        public Builder image(String image) {
+            this.image = image;
             return this;
         }
 

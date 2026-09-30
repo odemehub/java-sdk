@@ -9,6 +9,7 @@ public final class SubscriptionItem {
 
     private final String channelReference;
     private final String name;
+    private final String image;
     private final int quantity;
     private final String unitAmount;
     private final String taxRate;
@@ -16,6 +17,7 @@ public final class SubscriptionItem {
     private SubscriptionItem(JsonNode item) {
         this.channelReference = Read.string(item.path("channel_reference"));
         this.name = Read.string(item.path("name"));
+        this.image = Read.optionalString(item.path("image"));
         this.quantity = Read.integer(item.path("quantity"));
         this.unitAmount = Read.string(item.path("unit_amount"));
         this.taxRate = Read.optionalString(item.path("tax_rate"));
@@ -34,6 +36,11 @@ public final class SubscriptionItem {
         return name;
     }
 
+    /** The picture shown for the line: the one named when the subscription was opened, or else the product's; null when neither has one. */
+    public String getImage() {
+        return image;
+    }
+
     public int getQuantity() {
         return quantity;
     }
@@ -50,7 +57,7 @@ public final class SubscriptionItem {
 
     @Override
     public String toString() {
-        return "SubscriptionItem[channelReference=" + channelReference + ", name=" + name + ", quantity=" + quantity
+        return "SubscriptionItem[channelReference=" + channelReference + ", name=" + name + ", image=" + image + ", quantity=" + quantity
             + ", unitAmount=" + unitAmount + ", taxRate=" + taxRate + "]";
     }
 }
