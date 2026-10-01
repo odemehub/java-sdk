@@ -105,6 +105,7 @@ var payment = client.securePayment(SecurePayment.builder()
     .installmentNumber(1)
     .ip(request.getRemoteAddr())
     .callbackUrl("https://magazam.com/odeme/donus")
+    .webhookUrl("https://magazam.com/odemehub/odeme")   // isteğe bağlı, aşağıya bakın
     .customer(customer)
     .card(card)
     .build());
@@ -143,6 +144,52 @@ public String odemeDonus(@RequestParam("transaction_token") String transactionTo
 ```
 
 Neden böyle: o POST'u bizim sunucumuz değil, müşterinin tarayıcısı gönderir; tarayıcıya imzalayacak bir sır verilemez. `successful` alanına bakıp sipariş kapatmayın — onu herkes gönderebilir; yalnız "başarısız" ipucunda gereksiz sorgudan kaçınmak için kullanın. Geçide sorduğunuz yanıt ise her zaman imzalıdır ve SDK imzayı sizin için doğrular. Başkasının işlemini sorarsanız `ValidationException` alırsınız.
+
+### Ödeme bildirimi (webhook)
+
+Müşteri bankadan sonra sekmeyi kapatırsa tarayıcı `callbackUrl` adresinize hiç dönmez. Bunun için ödemeyi başlatırken `webhookUrl` verin: ödeme bankada bitince (ya da müşteri bankanın sayfasını hiç açmayıp süresi dolunca) geçidin **kendi sunucusu** o adrese imzalı bir POST gönderir. Gövde `retrievePayment()` yanıtının aynısıdır, üstüne hangi duruma gelindiğini söyleyen `event` eklenir: `successful`, `failed` ya da `expired`. Gövdeyi abonelik bildirimindeki gibi **ham** (`byte[]`) okuyun.
+
+```java
+@PostMapping("/odemehub/odeme")
+public ResponseEntity<Void> odemeBildirimi(
+    @RequestBody byte[] payload,
+    @RequestHeader(value = "X-Signature", required = false) String signature
+) {
+    com.odemehub.response.TransactionWebhook webhook;
+
+    try {
+        webhook = client.transactionWebhook(payload, signature);
+    } catch (SignatureException exception) {
+        return ResponseEntity.badRequest().build();
+    }
+
+    if (webhook.isSuccessful()) {
+        siparisiOdendiIsaretle(webhook.getChannelReference(), webhook.getTransactionToken());
+    }
+
+    return ResponseEntity.ok().build();
+}
+```
+
+Ödeme başlatılırken reddedilen (yanıtı anında aldığınız) ödeme için bildirim gitmez. Aynı sipariş için birden fazla deneme olabildiğinden bildirimi `getTransactionToken()` ile tekilleştirin. 2xx dışında bir yanıt (ya da yanıtsızlık) başarısız sayılır; bildirim 5 dakika sonra bir kez daha denenir ve ulaşmayan bildirimler panelde işlemin sayfasında listelenir. Bildirim hiç gelmezse `retrieveTransactions()` ile sorabilirsiniz (aşağıda).
+
+### Bir referansın bütün denemeleri
+
+Elinizde yalnızca kendi sipariş numaranız varsa, o numara altında yapılmış **bütün** ödeme denemelerini — hangisi reddedildi, hangisi geçti — eskiden yeniye listeleyin:
+
+```java
+import com.odemehub.request.RetrieveTransactions;
+
+var attempts = client.retrieveTransactions(new RetrieveTransactions("SIP-10232"));
+
+for (var attempt : attempts.getTransactions()) {
+    System.out.println(attempt.getStatus() + " " + attempt.getPaymentStatus() + " " + attempt.getErrorMessage());
+}
+
+var paid = attempts.successful();   // geçen deneme ya da null
+```
+
+Her deneme `getToken()`, `getStatus()` (`started`, `redirected_to_secure_page`, `returned_from_secure_page`, `failed`, `expired`, `successful`), `getPaymentStatus()` (`unpaid`, `paid`, `cancelled`, `refunded`, `partially_refunded`), `getSecurityType()`, `getAmount()` / `getBaseAmount()` / `getCurrency()`, `getInstallmentNumber()`, `isTest()`, `getErrorCode()` / `getErrorMessage()`, `getCreatedAt()`, `getCustomerChannelReference()`, `getConversion()` ve bağlı olduğu `getOrderToken()` / `getSubscriptionToken()` alanlarını taşır. Ödeme sayfasından açılan siparişin denemeleri de siparişin referansı altında burada görünür.
 
 ## Ürünler
 
@@ -186,6 +233,7 @@ var order = client.orderPayment(OrderPayment.builder()
     .channelReference("SIPARIS-10233")
     .successUrl("https://magazam.com/tesekkurler")
     .cancelUrl("https://magazam.com/sepet")
+    .webhookUrl("https://magazam.com/odemehub/siparis")   // isteğe bağlı, aşağıya bakın
     .customer(customer)
     .items(List.of(
         OrderItem.of("KAHVE-MAKINESI"),
@@ -201,6 +249,48 @@ return "redirect:" + order.getCheckoutUrl();
 Sipariş tutarını göndermezsiniz; geçit kalemleri toplar ve `order.getAmount()` olarak döner. Bir kalemin boş bıraktığı ad, fiyat ve KDV oranı kayıtlı üründen gelir; kalemde verdiğiniz değerler yalnızca o sipariş için geçerlidir, ürünü değiştirmez. Kayıtlı olmayan bir referansla da kalem gönderebilirsiniz, ama o zaman `name` ve `unitAmount` zorunludur. Kalemin `image` alanı (`https://` adres) ödeme sayfasında kalemin yanında gösterilir; verilmezse kayıtlı ürünün görseli kullanılır, ürün kayıtlı değilse kalem görselsiz görünür.
 
 Ödeme tamamlanınca müşteri, 3D'dekiyle aynı biçimde `successUrl` adresinize döner: aynı üç alan gelir, sonucu yine `retrievePayment()` ile sorarsınız. Müşteri ödeme sayfasında karttan kaynaklı bir hata alırsa size dönmez, sayfada kalıp başka kartla dener.
+
+Yanıt (`response.Order`) siparişi bütünüyle taşır: `getToken()`, `getChannelReference()`, `getDescription()`, `getStatus()` (`open` / `paid`), `getItems()`, `getSubtotal()`, `getTaxAmount()`, `getAmount()`, `getCurrency()`, `getIsTest()`, `getCreatedAt()`, `getCheckoutUrl()` (ödenince `null`) ve ödeyen işlemin token'ı `getTransactionToken()` (açıkken `null`). Aynı nesne `retrieveOrder()` ve sipariş bildiriminde de gelir.
+
+### Sipariş bildirimi (webhook) ve sipariş sorgusu
+
+Müşteri ödedikten sonra sekmeyi kapatırsa tarayıcı `successUrl` adresinize hiç dönmez. Siparişi açarken `webhookUrl` verirseniz sipariş ödendiği an geçidin **kendi sunucusu** o adrese imzalı bir POST gönderir; gövde `event: "paid"` ve siparişin kendisidir (`getTransactionToken()` dolu gelir). Başarısız denemeler bildirilmez — sipariş açık kalır, müşteri sayfada yeniden dener.
+
+```java
+@PostMapping("/odemehub/siparis")
+public ResponseEntity<Void> siparisBildirimi(
+    @RequestBody byte[] payload,
+    @RequestHeader(value = "X-Signature", required = false) String signature
+) {
+    com.odemehub.response.OrderWebhook webhook;
+
+    try {
+        webhook = client.orderWebhook(payload, signature);
+    } catch (SignatureException exception) {
+        return ResponseEntity.badRequest().build();
+    }
+
+    if (webhook.isPaid()) {
+        siparisiOdendiIsaretle(webhook.getOrder().getChannelReference(), webhook.getOrder().getTransactionToken());
+    }
+
+    return ResponseEntity.ok().build();
+}
+```
+
+Elinizde siparişin token'ı varsa durumunu her zaman kendiniz de sorabilirsiniz:
+
+```java
+import com.odemehub.request.RetrieveOrder;
+
+var order = client.retrieveOrder(new RetrieveOrder(token));
+
+if (order.isPaid()) {
+    // order.getTransactionToken() ile iade / iptal / retrievePayment yapılabilir
+}
+```
+
+Siparişin bütün denemelerini (reddedilenler dahil) görmek için `retrieveTransactions()` ile siparişin `channelReference` değerini sorun.
 
 ## Abonelikler
 
@@ -327,7 +417,7 @@ Gönderilen olaylar aboneliğin **durumudur**, yapılan işlem değil:
 | `cancelled` | abonelik iptal edildi; müşteri `endsAt` tarihine kadar hizmeti almaya devam eder |
 | `ended` | ödenmiş dönem doldu, abonelik kapandı |
 
-2xx dışında bir yanıt (ya da yanıtsızlık) başarısız sayılır; bildirim 5 dakika sonra bir kez daha denenir. Ulaşmayan bildirimler panelde aboneliğin sayfasında HTTP kodu ve yanıtıyla listelenir.
+2xx dışında bir yanıt (ya da yanıtsızlık) başarısız sayılır; bildirim 5 dakika sonra bir kez daha denenir. Ulaşmayan bildirimler panelde aboneliğin sayfasında HTTP kodu ve yanıtıyla listelenir. Sipariş (`orderWebhook()`) ve 3D ödeme (`transactionWebhook()`) bildirimleri de aynı yöntemle gider; her biri kendi adresine, kendi okuyucusuyla.
 
 ## Ödeme hangi hesaptan geçer
 

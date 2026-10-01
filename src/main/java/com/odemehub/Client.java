@@ -71,8 +71,8 @@ public final class Client {
      * Open an order to be paid on the gateway's own page, and get back the
      * address to send the customer to.
      */
-    public com.odemehub.response.OrderPayment orderPayment(com.odemehub.request.OrderPayment orderPayment) {
-        return com.odemehub.response.OrderPayment.fromBody(send(orderPayment));
+    public com.odemehub.response.Order orderPayment(com.odemehub.request.OrderPayment orderPayment) {
+        return com.odemehub.response.Order.fromBody(send(orderPayment));
     }
 
     /**
@@ -115,6 +115,15 @@ public final class Client {
      * number, and how an amount may be paid off on it. Nothing is charged and
      * nothing is written down.
      */
+    /**
+     * Every attempt made under one of the merchant's own numbers on a channel,
+     * oldest first: how many times the customer tried, which were refused and
+     * which went through.
+     */
+    public com.odemehub.response.Transactions retrieveTransactions(com.odemehub.request.RetrieveTransactions transactions) {
+        return com.odemehub.response.Transactions.fromBody(send(transactions));
+    }
+
     public com.odemehub.response.Bin retrieveBin(com.odemehub.request.RetrieveBin retrieveBin) {
         return com.odemehub.response.Bin.fromBody(send(retrieveBin));
     }
@@ -132,6 +141,15 @@ public final class Client {
      * Where a subscription stands: what it is for, the period it is on and
      * whether that period has been paid for.
      */
+    /**
+     * Where an order stands: what it is for, whether it has been paid and, if
+     * so, by which payment. The one call a merchant holding nothing but the
+     * order's token can make.
+     */
+    public com.odemehub.response.Order retrieveOrder(com.odemehub.request.RetrieveOrder order) {
+        return com.odemehub.response.Order.fromBody(send(order));
+    }
+
     public com.odemehub.response.Subscription retrieveSubscription(com.odemehub.request.RetrieveSubscription subscription) {
         return com.odemehub.response.Subscription.fromBody(send(subscription));
     }
@@ -184,15 +202,54 @@ public final class Client {
      * @throws SignatureException when the signature does not hold.
      */
     public com.odemehub.response.SubscriptionWebhook subscriptionWebhook(byte[] payload, String signature) {
-        if (!this.signature.verify(payload, signature)) {
-            throw new SignatureException("Bildirimin imzası doğrulanamadı; bildirim ödeme geçidinden gelmemiş olabilir.");
-        }
-
-        return com.odemehub.response.SubscriptionWebhook.fromBody(decode(new String(payload, StandardCharsets.UTF_8), 0));
+        return com.odemehub.response.SubscriptionWebhook.fromBody(webhook(payload, signature));
     }
 
     public com.odemehub.response.SubscriptionWebhook subscriptionWebhook(String payload, String signature) {
         return subscriptionWebhook(payload.getBytes(StandardCharsets.UTF_8), signature);
+    }
+
+    /**
+     * Read the word the gateway sent about an order: that it was paid, with
+     * the payment that paid it. Posted to the address the order was opened
+     * with and read the way a subscription's word is.
+     *
+     * @throws SignatureException when the signature does not hold.
+     */
+    public com.odemehub.response.OrderWebhook orderWebhook(byte[] payload, String signature) {
+        return com.odemehub.response.OrderWebhook.fromBody(webhook(payload, signature));
+    }
+
+    public com.odemehub.response.OrderWebhook orderWebhook(String payload, String signature) {
+        return orderWebhook(payload.getBytes(StandardCharsets.UTF_8), signature);
+    }
+
+    /**
+     * Read the word the gateway sent about a payment the customer finished at
+     * their bank: the same answer {@code retrievePayment} gives, with the
+     * state reached on top. Posted to the address the payment was started
+     * with and read the way a subscription's word is.
+     *
+     * @throws SignatureException when the signature does not hold.
+     */
+    public com.odemehub.response.TransactionWebhook transactionWebhook(byte[] payload, String signature) {
+        return com.odemehub.response.TransactionWebhook.fromBody(webhook(payload, signature));
+    }
+
+    public com.odemehub.response.TransactionWebhook transactionWebhook(String payload, String signature) {
+        return transactionWebhook(payload.getBytes(StandardCharsets.UTF_8), signature);
+    }
+
+    /**
+     * Check a word's signature and open it. Nothing in it is believed until
+     * the signature holds.
+     */
+    private JsonNode webhook(byte[] payload, String signature) {
+        if (!this.signature.verify(payload, signature)) {
+            throw new SignatureException("Bildirimin imzası doğrulanamadı; bildirim ödeme geçidinden gelmemiş olabilir.");
+        }
+
+        return decode(new String(payload, StandardCharsets.UTF_8), 0);
     }
 
     /**

@@ -20,6 +20,7 @@ public final class OrderPayment extends ChannelMessage {
     private final Customer customer;
     private final List<OrderItem> items;
     private final String cancelUrl;
+    private final String webhookUrl;
     private final String description;
     private final String currency;
     private final String paymentProviderToken;
@@ -31,6 +32,7 @@ public final class OrderPayment extends ChannelMessage {
         this.customer = Fields.required(builder.customer, "customer");
         this.items = List.copyOf(Fields.required(builder.items, "items"));
         this.cancelUrl = builder.cancelUrl;
+        this.webhookUrl = builder.webhookUrl;
         this.description = builder.description;
         this.currency = builder.currency;
         this.paymentProviderToken = builder.paymentProviderToken;
@@ -56,6 +58,7 @@ public final class OrderPayment extends ChannelMessage {
                 "currency", currency,
                 "success_url", successUrl,
                 "cancel_url", cancelUrl,
+                "webhook_url", webhookUrl,
                 "items", items.stream().map(OrderItem::toBody).toList()
             ),
             "customer", customer.toBody()
@@ -69,6 +72,7 @@ public final class OrderPayment extends ChannelMessage {
         private Customer customer;
         private List<OrderItem> items;
         private String cancelUrl;
+        private String webhookUrl;
         private String description;
         private String currency;
         private String paymentProviderToken;
@@ -102,6 +106,17 @@ public final class OrderPayment extends ChannelMessage {
         /** Where the customer goes if they turn back without paying. */
         public Builder cancelUrl(String cancelUrl) {
             this.cancelUrl = cancelUrl;
+            return this;
+        }
+
+        /**
+         * Where the merchant's own server is told the order was paid, signed
+         * the way every answer is. The customer's browser carries the word to
+         * the success address only if the customer stays for it; this address
+         * hears either way.
+         */
+        public Builder webhookUrl(String webhookUrl) {
+            this.webhookUrl = webhookUrl;
             return this;
         }
 
