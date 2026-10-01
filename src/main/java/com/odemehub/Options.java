@@ -34,7 +34,7 @@ public final class Options {
         return new Builder();
     }
 
-    /** The address the application is served from, e.g. https://odeme.gurmehub.com. */
+    /** The address the application is served from, e.g. https://app.odemehub.com. */
     public String getBaseUrl() {
         return baseUrl;
     }

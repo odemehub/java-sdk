@@ -33,7 +33,7 @@ import com.odemehub.Client;
 import com.odemehub.Options;
 
 Client client = new Client(Options.builder()
-    .baseUrl("https://odeme.gurmehub.com")
+    .baseUrl("https://app.odemehub.com")
     .team("4829301756")                                   // Çalışma Alanı Kimliğiniz
     .channelToken("6f1c2e7a-4b3d-4c8e-9a61-2f5d7b0c3e14") // müşterinin size ulaştığı kanal
     .apiKey(System.getenv("ODEMEHUB_API_KEY"))
