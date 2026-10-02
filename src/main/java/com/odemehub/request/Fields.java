@@ -1,8 +1,11 @@
 package com.odemehub.request;
 
+import java.util.Collection;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Function;
 
 /**
  * How request bodies are written: in the snake_case the gateway speaks, in
@@ -35,6 +38,25 @@ final class Fields {
         body.values().removeIf(Objects::isNull);
 
         return body;
+    }
+
+    /**
+     * Fields a change sets to nothing. Leaving a field out of a change keeps
+     * what was there, so clearing one is said on purpose, by its wire name.
+     */
+    static Map<String, Object> cleared(Map<String, Object> body, Collection<String> fields) {
+        for (String field : fields) {
+            body.put(field, null);
+        }
+
+        return body;
+    }
+
+    /**
+     * A list written element by element, or null when there is none.
+     */
+    static <T> List<Map<String, Object>> each(List<T> values, Function<T, Map<String, Object>> write) {
+        return values == null ? null : values.stream().map(write).toList();
     }
 
     static <T> T required(T value, String name) {

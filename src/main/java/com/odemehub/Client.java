@@ -4,6 +4,9 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.odemehub.exception.AuthenticationException;
+import com.odemehub.exception.ForbiddenException;
+import com.odemehub.exception.NotFoundException;
+import com.odemehub.exception.RateLimitException;
 import com.odemehub.exception.SignatureException;
 import com.odemehub.exception.TransportException;
 import com.odemehub.exception.UnexpectedResponseException;
@@ -24,6 +27,11 @@ import java.util.Map;
  * The gateway, as the merchant's application talks to it. Every request
  * leaves signed with the team's secret and every answer is checked against
  * it, so both sides can tell the other is really who it says it is.
+ *
+ * <p>There is one method per endpoint, named after it: {@code create-order}
+ * is {@code createOrder()} and takes a {@code request.CreateOrder}. The
+ * channel the merchant speaks for is named once, on the options, and put into
+ * each request wherever its endpoint expects it.
  *
  * <p>A client holds no state beyond its options, so one can be shared across
  * threads for the life of the application.
@@ -53,7 +61,8 @@ public final class Client {
     /**
      * Start a payment the customer confirms with their bank. A successful
      * answer is not a settled payment: the customer is still to be sent to the
-     * address it comes back with.
+     * address it comes back with, and {@code retrievePayment} says what became
+     * of it once they are back.
      */
     public com.odemehub.response.SecurePayment securePayment(com.odemehub.request.SecurePayment payment) {
         return com.odemehub.response.SecurePayment.fromBody(send(payment));
@@ -65,23 +74,6 @@ public final class Client {
      */
     public com.odemehub.response.RegularPayment regularPayment(com.odemehub.request.RegularPayment payment) {
         return com.odemehub.response.RegularPayment.fromBody(send(payment));
-    }
-
-    /**
-     * Open an order to be paid on the gateway's own page, and get back the
-     * address to send the customer to.
-     */
-    public com.odemehub.response.Order orderPayment(com.odemehub.request.OrderPayment orderPayment) {
-        return com.odemehub.response.Order.fromBody(send(orderPayment));
-    }
-
-    /**
-     * Open a subscription. The customer is sent to the address it comes back
-     * with and pays there, and the periods after that are taken from the card
-     * they pay with.
-     */
-    public com.odemehub.response.Subscription subscriptionPayment(com.odemehub.request.SubscriptionPayment subscription) {
-        return com.odemehub.response.Subscription.fromBody(send(subscription));
     }
 
     /**
@@ -102,12 +94,29 @@ public final class Client {
     }
 
     /**
-     * How a payment went. A customer sent to their bank comes back to the
-     * merchant with the payment's token and a hint at how it went; the hint is
-     * worth nothing on its own, and this call says what really became of it.
+     * How a payment went, by its token. A customer sent to their bank comes
+     * back to the merchant with the payment's token and a hint at how it went;
+     * the hint is worth nothing on its own, and this call says what really
+     * became of it.
      */
     public com.odemehub.response.Payment retrievePayment(com.odemehub.request.RetrievePayment payment) {
         return com.odemehub.response.Payment.fromBody(send(payment));
+    }
+
+    /**
+     * How the latest payment under one of the merchant's own references went,
+     * for a merchant that sent a payment and never heard back.
+     */
+    public com.odemehub.response.Payment retrievePaymentByReference(com.odemehub.request.RetrievePaymentByReference payment) {
+        return com.odemehub.response.Payment.fromBody(send(payment));
+    }
+
+    /**
+     * Every payment attempt made on a channel within a span of at most seven
+     * days, the refused ones included, oldest first.
+     */
+    public com.odemehub.response.PaymentList retrievePaymentsByChannelReference(com.odemehub.request.RetrievePaymentsByChannelReference payments) {
+        return com.odemehub.response.PaymentList.fromBody(send(payments));
     }
 
     /**
@@ -115,170 +124,240 @@ public final class Client {
      * number, and how an amount may be paid off on it. Nothing is charged and
      * nothing is written down.
      */
-    /**
-     * Every attempt made under one of the merchant's own numbers on a channel,
-     * oldest first: how many times the customer tried, which were refused and
-     * which went through.
-     */
-    public com.odemehub.response.Transactions retrieveTransactions(com.odemehub.request.RetrieveTransactions transactions) {
-        return com.odemehub.response.Transactions.fromBody(send(transactions));
-    }
-
-    public com.odemehub.response.Bin retrieveBin(com.odemehub.request.RetrieveBin retrieveBin) {
-        return com.odemehub.response.Bin.fromBody(send(retrieveBin));
+    public com.odemehub.response.Bin retrieveBin(com.odemehub.request.RetrieveBin bin) {
+        return com.odemehub.response.Bin.fromBody(send(bin));
     }
 
     /**
-     * Save a product in the merchant's catalogue at the gateway, or change the
-     * one already saved under the same key on the same channel. Order lines
-     * and subscriptions name products by key.
+     * Open an order to be paid on the gateway's own page, or overwrite the
+     * open one already under the same reference. Nothing is charged here; the
+     * customer is sent to the address it comes back with and pays there.
      */
-    public com.odemehub.response.Product saveProduct(com.odemehub.request.SaveProduct product) {
-        return com.odemehub.response.Product.fromBody(send(product));
+    public com.odemehub.response.OrderDetails createOrder(com.odemehub.request.CreateOrder order) {
+        return com.odemehub.response.OrderDetails.fromBody(send(order));
     }
 
     /**
-     * Where a subscription stands: what it is for, the period it is on and
-     * whether that period has been paid for.
+     * Where an order stands, by its token.
      */
-    /**
-     * Where an order stands: what it is for, whether it has been paid and, if
-     * so, by which payment. The one call a merchant holding nothing but the
-     * order's token can make.
-     */
-    public com.odemehub.response.Order retrieveOrder(com.odemehub.request.RetrieveOrder order) {
-        return com.odemehub.response.Order.fromBody(send(order));
-    }
-
-    public com.odemehub.response.Subscription retrieveSubscription(com.odemehub.request.RetrieveSubscription subscription) {
-        return com.odemehub.response.Subscription.fromBody(send(subscription));
+    public com.odemehub.response.OrderDetails retrieveOrder(com.odemehub.request.RetrieveOrder order) {
+        return com.odemehub.response.OrderDetails.fromBody(send(order));
     }
 
     /**
-     * Call a subscription off. Nothing is given back: the customer keeps the
-     * days they already paid for and is served to the end of them, and nothing
-     * is charged after that.
+     * Where the latest order under one of the merchant's own references
+     * stands.
      */
-    public com.odemehub.response.Subscription cancelSubscription(com.odemehub.request.CancelSubscription subscription) {
-        return com.odemehub.response.Subscription.fromBody(send(subscription));
+    public com.odemehub.response.OrderDetails retrieveOrderByReference(com.odemehub.request.RetrieveOrderByReference order) {
+        return com.odemehub.response.OrderDetails.fromBody(send(order));
+    }
+
+    /**
+     * Every order opened on a channel within a span of at most seven days,
+     * oldest first.
+     */
+    public com.odemehub.response.OrderList retrieveOrdersByChannelReference(com.odemehub.request.RetrieveOrdersByChannelReference orders) {
+        return com.odemehub.response.OrderList.fromBody(send(orders));
+    }
+
+    /**
+     * Change an open order. Only what is sent is written.
+     */
+    public com.odemehub.response.OrderDetails updateOrder(com.odemehub.request.UpdateOrder order) {
+        return com.odemehub.response.OrderDetails.fromBody(send(order));
+    }
+
+    /**
+     * Open a payment link, or overwrite the one already under the same
+     * reference. The address it comes back with is the link itself.
+     */
+    public com.odemehub.response.PaymentLinkDetails createPaymentLink(com.odemehub.request.CreatePaymentLink link) {
+        return com.odemehub.response.PaymentLinkDetails.fromBody(send(link));
+    }
+
+    /**
+     * A payment link as it stands, by its token, with how many payment
+     * attempts were made on it and the latest fifty of them.
+     */
+    public com.odemehub.response.PaymentLinkDetails retrievePaymentLink(com.odemehub.request.RetrievePaymentLink link) {
+        return com.odemehub.response.PaymentLinkDetails.fromBody(send(link));
+    }
+
+    /**
+     * A payment link as it stands, by the merchant's own reference for it.
+     */
+    public com.odemehub.response.PaymentLinkDetails retrievePaymentLinkByReference(com.odemehub.request.RetrievePaymentLinkByReference link) {
+        return com.odemehub.response.PaymentLinkDetails.fromBody(send(link));
+    }
+
+    /**
+     * Every payment link opened on a channel within a span of at most seven
+     * days, oldest first.
+     */
+    public com.odemehub.response.PaymentLinkList retrievePaymentLinksByChannelReference(com.odemehub.request.RetrievePaymentLinksByChannelReference links) {
+        return com.odemehub.response.PaymentLinkList.fromBody(send(links));
+    }
+
+    /**
+     * Change a payment link, or switch it off. Only what is sent is written.
+     */
+    public com.odemehub.response.PaymentLinkDetails updatePaymentLink(com.odemehub.request.UpdatePaymentLink link) {
+        return com.odemehub.response.PaymentLinkDetails.fromBody(send(link));
+    }
+
+    /**
+     * Open a subscription, or overwrite the one already under the same
+     * reference while nothing has been paid on it. The customer is sent to the
+     * address it comes back with and pays the first renewal there; the rest
+     * are taken from the card they pay with.
+     */
+    public com.odemehub.response.SubscriptionDetails createSubscription(com.odemehub.request.CreateSubscription subscription) {
+        return com.odemehub.response.SubscriptionDetails.fromBody(send(subscription));
+    }
+
+    /**
+     * Where a subscription stands, by its token.
+     */
+    public com.odemehub.response.SubscriptionDetails retrieveSubscription(com.odemehub.request.RetrieveSubscription subscription) {
+        return com.odemehub.response.SubscriptionDetails.fromBody(send(subscription));
+    }
+
+    /**
+     * Where the latest subscription under one of the merchant's own
+     * references stands.
+     */
+    public com.odemehub.response.SubscriptionDetails retrieveSubscriptionByReference(com.odemehub.request.RetrieveSubscriptionByReference subscription) {
+        return com.odemehub.response.SubscriptionDetails.fromBody(send(subscription));
+    }
+
+    /**
+     * Every subscription opened on a channel within a span of at most seven
+     * days, oldest first.
+     */
+    public com.odemehub.response.SubscriptionList retrieveSubscriptionsByChannelReference(com.odemehub.request.RetrieveSubscriptionsByChannelReference subscriptions) {
+        return com.odemehub.response.SubscriptionList.fromBody(send(subscriptions));
+    }
+
+    /**
+     * Change a subscription, or call it off with the status
+     * {@code cancelled}. Only what is sent is written. Nothing is given back
+     * on a cancellation: the customer is served to the end of what they paid
+     * for, and nothing is charged after that.
+     */
+    public com.odemehub.response.SubscriptionDetails updateSubscription(com.odemehub.request.UpdateSubscription subscription) {
+        return com.odemehub.response.SubscriptionDetails.fromBody(send(subscription));
     }
 
     /**
      * Keep a card for a customer without making a payment on it.
      */
-    public com.odemehub.response.KeptCard saveCard(com.odemehub.request.SaveCard saveCard) {
-        return com.odemehub.response.KeptCard.fromBody(send(saveCard));
+    public com.odemehub.response.SavedCardDetails createSavedCard(com.odemehub.request.CreateSavedCard savedCard) {
+        return com.odemehub.response.SavedCardDetails.fromBody(send(savedCard));
     }
 
     /**
-     * The cards a customer let the merchant keep, the default one first.
+     * One kept card, by its token.
      */
-    public com.odemehub.response.KeptCards savedCards(com.odemehub.request.SavedCards savedCards) {
-        return com.odemehub.response.KeptCards.fromBody(send(savedCards));
+    public com.odemehub.response.SavedCardDetails retrieveSavedCard(com.odemehub.request.RetrieveSavedCard savedCard) {
+        return com.odemehub.response.SavedCardDetails.fromBody(send(savedCard));
     }
 
     /**
-     * Make one of a customer's kept cards the one they pay with unless they
-     * say otherwise.
+     * The cards kept for a customer, the default one first.
      */
-    public com.odemehub.response.KeptCard defaultSavedCard(com.odemehub.request.DefaultSavedCard defaultSavedCard) {
-        return com.odemehub.response.KeptCard.fromBody(send(defaultSavedCard));
+    public com.odemehub.response.SavedCardList retrieveSavedCardsByReference(com.odemehub.request.RetrieveSavedCardsByReference savedCards) {
+        return com.odemehub.response.SavedCardList.fromBody(send(savedCards));
     }
 
     /**
-     * Let go of one of a customer's kept cards, at the provider and here.
+     * Make a kept card the one the customer pays with unless they say
+     * otherwise.
      */
-    public com.odemehub.response.KeptCard deleteSavedCard(com.odemehub.request.DeleteSavedCard deleteSavedCard) {
-        return com.odemehub.response.KeptCard.fromBody(send(deleteSavedCard));
+    public com.odemehub.response.SavedCardDetails updateSavedCard(com.odemehub.request.UpdateSavedCard savedCard) {
+        return com.odemehub.response.SavedCardDetails.fromBody(send(savedCard));
     }
 
     /**
-     * Read the word the gateway sent about a subscription: posted to the
-     * address the subscription was opened with, as plain JSON signed in the
-     * {@code X-Signature} header. Hand it the body exactly as it arrived, byte
-     * for byte, together with the header; nothing in it is to be believed
-     * until the signature holds.
+     * Let go of a kept card, at the provider and here.
+     */
+    public com.odemehub.response.DeletedSavedCard deleteSavedCard(com.odemehub.request.DeleteSavedCard savedCard) {
+        return com.odemehub.response.DeletedSavedCard.fromBody(send(savedCard));
+    }
+
+    /**
+     * Read a word the gateway posted to one of the merchant's webhook
+     * addresses. Hand it the request exactly as it arrived — the method, the
+     * path of the address it came to (without the query string), the raw
+     * body byte for byte and the two headers — and nothing in it is believed
+     * until the signature is checked against the secret.
+     *
+     * <p>The word only names what it is about; ask the gateway what became of
+     * it before acting on it. Answer with any 2xx once the word is taken; the
+     * gateway tries again, up to five times, until it hears one.
      *
      * @throws SignatureException when the signature does not hold.
      */
-    public com.odemehub.response.SubscriptionWebhook subscriptionWebhook(byte[] payload, String signature) {
-        return com.odemehub.response.SubscriptionWebhook.fromBody(webhook(payload, signature));
-    }
-
-    public com.odemehub.response.SubscriptionWebhook subscriptionWebhook(String payload, String signature) {
-        return subscriptionWebhook(payload.getBytes(StandardCharsets.UTF_8), signature);
-    }
-
-    /**
-     * Read the word the gateway sent about an order: that it was paid, with
-     * the payment that paid it. Posted to the address the order was opened
-     * with and read the way a subscription's word is.
-     *
-     * @throws SignatureException when the signature does not hold.
-     */
-    public com.odemehub.response.OrderWebhook orderWebhook(byte[] payload, String signature) {
-        return com.odemehub.response.OrderWebhook.fromBody(webhook(payload, signature));
-    }
-
-    public com.odemehub.response.OrderWebhook orderWebhook(String payload, String signature) {
-        return orderWebhook(payload.getBytes(StandardCharsets.UTF_8), signature);
-    }
-
-    /**
-     * Read the word the gateway sent about a payment the customer finished at
-     * their bank: the same answer {@code retrievePayment} gives, with the
-     * state reached on top. Posted to the address the payment was started
-     * with and read the way a subscription's word is.
-     *
-     * @throws SignatureException when the signature does not hold.
-     */
-    public com.odemehub.response.TransactionWebhook transactionWebhook(byte[] payload, String signature) {
-        return com.odemehub.response.TransactionWebhook.fromBody(webhook(payload, signature));
-    }
-
-    public com.odemehub.response.TransactionWebhook transactionWebhook(String payload, String signature) {
-        return transactionWebhook(payload.getBytes(StandardCharsets.UTF_8), signature);
-    }
-
-    /**
-     * Check a word's signature and open it. Nothing in it is believed until
-     * the signature holds.
-     */
-    private JsonNode webhook(byte[] payload, String signature) {
-        if (!this.signature.verify(payload, signature)) {
+    public com.odemehub.response.Webhook webhook(String method, String path, byte[] payload, String timestamp, String signature) {
+        if (!verifyWebhook(method, path, payload, timestamp, signature)) {
             throw new SignatureException("Bildirimin imzası doğrulanamadı; bildirim ödeme geçidinden gelmemiş olabilir.");
         }
 
-        return decode(new String(payload, StandardCharsets.UTF_8), 0);
+        return com.odemehub.response.Webhook.fromBody(decode(new String(payload, StandardCharsets.UTF_8), 0));
+    }
+
+    public com.odemehub.response.Webhook webhook(String method, String path, String payload, String timestamp, String signature) {
+        return webhook(method, path, payload.getBytes(StandardCharsets.UTF_8), timestamp, signature);
+    }
+
+    /**
+     * Whether a word that arrived at a webhook address was signed by the
+     * gateway with this team's secret, recently enough to be taken. The path
+     * is the address's own, with its leading slash and without the query
+     * string; the body is the raw bytes as they arrived.
+     */
+    public boolean verifyWebhook(String method, String path, byte[] payload, String timestamp, String signature) {
+        return this.signature.verify(method, path, payload, timestamp, signature);
+    }
+
+    public boolean verifyWebhook(String method, String path, String payload, String timestamp, String signature) {
+        return verifyWebhook(method, path, payload.getBytes(StandardCharsets.UTF_8), timestamp, signature);
     }
 
     /**
      * Sign what is being asked for, hand it to the gateway and read the answer
-     * back. The body is signed exactly as it is sent, byte for byte, so it is
-     * written once and used for both.
+     * back. The body is signed exactly as it is sent, byte for byte, together
+     * with the moment, the method and the path, so it is written once and used
+     * for both; a GET sends no body and signs the empty string.
      */
     private JsonNode send(Message message) {
+        String method = message.method();
+        String path = options.path(message.path());
+        boolean isGet = method.equals("GET");
         byte[] body;
 
         try {
-            body = JSON.writeValueAsBytes(message.toBody(options.getChannelToken()));
+            body = isGet ? new byte[0] : JSON.writeValueAsBytes(message.toBody(options.getChannelToken()));
         } catch (JsonProcessingException exception) {
             throw new UnexpectedResponseException("İstek gövdesi JSON olarak yazılamadı: " + exception.getMessage(), 0);
         }
 
-        HttpRequest request = HttpRequest.newBuilder(URI.create(options.url(message.path())))
+        HttpRequest.Builder request = HttpRequest.newBuilder(URI.create(options.url(message.path())))
             .timeout(options.getTimeout())
             .header(Options.API_KEY_HEADER, options.getApiKey())
-            .header(Signature.HEADER, signature.sign(body))
-            .header("Content-Type", "application/json")
-            .header("Accept", "application/json")
-            .POST(HttpRequest.BodyPublishers.ofByteArray(body))
-            .build();
+            .header("Accept", "application/json");
+
+        signature.headers(method, path, body).forEach(request::header);
+
+        if (isGet) {
+            request.GET();
+        } else {
+            request.header("Content-Type", "application/json").POST(HttpRequest.BodyPublishers.ofByteArray(body));
+        }
 
         HttpResponse<byte[]> response;
 
         try {
-            response = http.send(request, HttpResponse.BodyHandlers.ofByteArray());
+            response = http.send(request.build(), HttpResponse.BodyHandlers.ofByteArray());
         } catch (IOException exception) {
             String reason = exception.getMessage() != null ? exception.getMessage() : exception.getClass().getSimpleName();
 
@@ -288,27 +367,35 @@ public final class Client {
             throw new TransportException("Ödeme geçidine giden istek yarıda kesildi.", exception);
         }
 
-        return read(response);
+        return read(response, method, path);
     }
 
     /**
      * Read the answer. An outcome is answered with 200 and signed, however the
      * payment itself turned out: a payment the provider declined is an
-     * outcome like any other and comes back rather than being thrown.
+     * outcome like any other and comes back rather than being thrown. The
+     * signature is checked over the method and the path of the request, the
+     * answer's own moment and its body.
      *
      * <p>Anything else is a refusal — the request never became a payment — and
      * the status says which kind. The gateway signs some of those too, but a
      * signature does not make a refusal an outcome, so the status is read
      * first.
      */
-    private JsonNode read(HttpResponse<byte[]> response) {
+    private JsonNode read(HttpResponse<byte[]> response, String method, String path) {
         int status = response.statusCode();
         String payload = new String(response.body(), StandardCharsets.UTF_8);
 
         if (status == 200) {
-            String answerSignature = response.headers().firstValue(Signature.HEADER).filter(value -> !value.isEmpty()).orElse(null);
+            boolean verified = signature.verify(
+                method,
+                path,
+                response.body(),
+                header(response, Signature.TIMESTAMP_HEADER),
+                header(response, Signature.HEADER)
+            );
 
-            if (!signature.verify(response.body(), answerSignature)) {
+            if (!verified) {
                 throw new SignatureException("Yanıtın imzası doğrulanamadı; yanıt ödeme geçidinden gelmemiş olabilir.");
             }
 
@@ -319,15 +406,36 @@ public final class Client {
         JsonNode result = body == null ? null : body.path("result");
         String message = refusalMessage(body, result);
 
-        if (status == 401) {
-            throw new AuthenticationException(message);
+        switch (status) {
+            case 401:
+                throw new AuthenticationException(message);
+            case 403:
+                throw new ForbiddenException(message);
+            case 404:
+                throw new NotFoundException(message);
+            case 422:
+                throw new ValidationException(message, refusalErrors(body, result));
+            case 429:
+                throw new RateLimitException(message, retryAfter(response));
+            default:
+                throw new UnexpectedResponseException(message, status);
         }
+    }
 
-        if (status == 422) {
-            throw new ValidationException(message, refusalErrors(body, result));
-        }
+    /**
+     * A header, or null when the answer did not carry it.
+     */
+    private static String header(HttpResponse<byte[]> response, String name) {
+        return response.headers().firstValue(name).filter(value -> !value.isEmpty()).orElse(null);
+    }
 
-        throw new UnexpectedResponseException(message, status);
+    /**
+     * How long the gateway asked to wait before trying again, in seconds.
+     */
+    private static Integer retryAfter(HttpResponse<byte[]> response) {
+        String value = header(response, "Retry-After");
+
+        return value != null && value.matches("[0-9]{1,9}") ? Integer.valueOf(value) : null;
     }
 
     /**

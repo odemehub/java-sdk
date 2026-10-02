@@ -9,6 +9,14 @@ package com.odemehub.request;
  */
 public abstract class ChannelMessage extends Message {
 
+    /**
+     * Stands for the team's own ödemehub channel, which has no token of its
+     * own and is only ever reached by payment links: the panel opens its
+     * links there. Give it as the channel of a payment link message to reach
+     * those links.
+     */
+    public static final String ODEMEHUB_CHANNEL = "odemehub";
+
     private final String channelToken;
 
     protected ChannelMessage(String channelToken) {
@@ -20,6 +28,24 @@ public abstract class ChannelMessage extends Message {
      */
     protected String channel(String channelToken) {
         return this.channelToken != null ? this.channelToken : channelToken;
+    }
+
+    /**
+     * The channel this message names itself, or null when it leaves it to the
+     * client. A change sends only this, so it never moves a record to the
+     * client's channel by accident.
+     */
+    protected String namedChannel() {
+        return channelToken;
+    }
+
+    /**
+     * The channel a payment link message is for: the one it names, the
+     * client's, or — for {@link #ODEMEHUB_CHANNEL} — none, which the gateway
+     * reads as its own ödemehub channel.
+     */
+    protected String linkChannel(String channelToken) {
+        return ODEMEHUB_CHANNEL.equals(this.channelToken) ? null : channel(channelToken);
     }
 
     public abstract static class Builder<B extends Builder<B>> {

@@ -39,7 +39,7 @@ public final class Options {
         return baseUrl;
     }
 
-    /** The team the payments are made on behalf of, as the Entegrasyon page names it. */
+    /** The team the payments are made on behalf of: the ten-digit workspace id the Entegrasyon page shows. */
     public String getTeam() {
         return team;
     }
@@ -68,10 +68,18 @@ public final class Options {
     }
 
     /**
+     * The path of a gateway endpoint for this team, as it is signed: with the
+     * leading slash and nothing in front of it.
+     */
+    public String path(String endpoint) {
+        return "/api/" + team + "/gateway/" + endpoint;
+    }
+
+    /**
      * The full address of a gateway endpoint for this team.
      */
-    public String url(String path) {
-        return baseUrl.replaceAll("/+$", "") + "/api/" + team + "/gateway/" + path;
+    public String url(String endpoint) {
+        return baseUrl.replaceAll("/+$", "") + path(endpoint);
     }
 
     @Override

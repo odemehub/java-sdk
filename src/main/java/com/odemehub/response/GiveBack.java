@@ -3,31 +3,29 @@ package com.odemehub.response;
 import com.fasterxml.jackson.databind.JsonNode;
 
 /**
- * Money given back out of a payment: a cancellation or a refund.
+ * Money given back out of a payment: a cancellation or a refund, answered
+ * the way every payment is, with what was given back alongside.
  */
 public final class GiveBack extends Payment {
 
-    private final String type;
-    private final String amount;
+    private final Refund refund;
 
     private GiveBack(JsonNode body) {
         super(body);
-        JsonNode refund = body.path("refund");
-        this.type = Read.string(refund.path("type"));
-        this.amount = Read.optionalString(refund.path("amount"));
+        this.refund = Refund.in(body.path("refund"));
     }
 
     public static GiveBack fromBody(JsonNode body) {
         return new GiveBack(body);
     }
 
-    /** Which of the two it was: a cancellation or a refund. */
-    public String getType() {
-        return type;
+    /** What was given back: how, and how much. */
+    public Refund getRefund() {
+        return refund;
     }
 
-    /** How much actually went back, whether or not it was asked for by name. */
-    public String getAmount() {
-        return amount;
+    @Override
+    public String toString() {
+        return "GiveBack[result=" + getResult() + ", transaction=" + getTransaction() + ", refund=" + refund + "]";
     }
 }

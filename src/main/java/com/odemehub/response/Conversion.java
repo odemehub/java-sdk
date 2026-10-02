@@ -1,6 +1,7 @@
 package com.odemehub.response;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.odemehub.enums.Currency;
 
 /**
  * What reached the card, for a payment the merchant's conversion rules
@@ -9,12 +10,12 @@ import com.fasterxml.jackson.databind.JsonNode;
 public final class Conversion {
 
     private final String amount;
-    private final String currency;
+    private final Currency currency;
     private final String rate;
 
     private Conversion(JsonNode conversion) {
         this.amount = Read.string(conversion.path("amount"));
-        this.currency = Read.string(conversion.path("currency"));
+        this.currency = Currency.from(Read.optionalString(conversion.path("currency")));
         this.rate = Read.string(conversion.path("rate"));
     }
 
@@ -27,8 +28,8 @@ public final class Conversion {
         return amount;
     }
 
-    /** The money it was taken in, e.g. TRY. */
-    public String getCurrency() {
+    /** The money it was taken in. */
+    public Currency getCurrency() {
         return currency;
     }
 

@@ -3,10 +3,12 @@ package com.odemehub.response;
 import com.fasterxml.jackson.databind.JsonNode;
 
 /**
- * The outcome of a payment, as the gateway reports it — whether it answers
- * straight away or posts the outcome back once the customer is home from
- * their bank. The two are the same shape, so a merchant reads them the same
- * way: how it went, which payment it was, and whose.
+ * The outcome of a payment, as the gateway reports it, whether it answers
+ * straight away, is asked after, or posts the outcome back once the customer
+ * is home from their bank. The shapes are the same, so a merchant reads them
+ * the same way: how it went, which payment it was, and whose. The gateway's
+ * own answers also say the payment in full: its state, what it was charged
+ * and how ({@link #getTransaction()}).
  *
  * <p>A payment that was turned down is an outcome like any other and arrives
  * here; only answers that were never a payment outcome are thrown as
@@ -15,24 +17,19 @@ import com.fasterxml.jackson.databind.JsonNode;
 public class Payment {
 
     private final Result result;
-    private final String transactionToken;
-    private final String channelToken;
-    private final String channelReference;
-    private final String customerChannelReference;
-    private final SavedCard savedCard;
+    private final PaymentTransaction transaction;
+    private final PaymentCustomer customer;
     private final Conversion conversion;
+    private final SavedCard savedCard;
 
     protected Payment(JsonNode body) {
-        JsonNode transaction = body.path("transaction");
         JsonNode conversion = body.path("conversion");
 
         this.result = Result.fromBody(body);
-        this.transactionToken = Read.string(transaction.path("token"));
-        this.channelToken = Read.string(transaction.path("channel_token"));
-        this.channelReference = Read.string(transaction.path("channel_reference"));
-        this.customerChannelReference = Read.string(body.path("customer").path("channel_reference"));
-        this.savedCard = SavedCard.in(body.path("saved_card"));
+        this.transaction = PaymentTransaction.in(body.path("transaction"));
+        this.customer = PaymentCustomer.in(body.path("customer"));
         this.conversion = conversion.isObject() ? Conversion.fromBody(conversion) : null;
+        this.savedCard = SavedCard.in(body.path("saved_card"));
     }
 
     public static Payment fromBody(JsonNode body) {
@@ -43,24 +40,23 @@ public class Payment {
         return result;
     }
 
-    /** The payment's token in the gateway, which names it again for a refund. */
-    public String getTransactionToken() {
-        return transactionToken;
+    /** The payment itself. */
+    public PaymentTransaction getTransaction() {
+        return transaction;
     }
 
-    /** The channel the payment came in on. */
-    public String getChannelToken() {
-        return channelToken;
+    /** Who the payment was made for: the reference, if any, and the billing address. */
+    public PaymentCustomer getCustomer() {
+        return customer;
     }
 
-    /** The reference the payment is known by in the calling system. */
-    public String getChannelReference() {
-        return channelReference;
-    }
-
-    /** The merchant's own key for the customer the payment was made for. */
-    public String getCustomerChannelReference() {
-        return customerChannelReference;
+    /**
+     * What reached the card, for a payment the merchant's conversion rules
+     * charged in another money than it was asked in; null for a payment
+     * charged as it was asked.
+     */
+    public Conversion getConversion() {
+        return conversion;
     }
 
     /**
@@ -73,18 +69,9 @@ public class Payment {
         return savedCard;
     }
 
-    /**
-     * What reached the card, for a payment the merchant's conversion rules
-     * charged in another money than it was asked in; null for a payment
-     * charged as it was asked.
-     */
-    public Conversion getConversion() {
-        return conversion;
-    }
-
     @Override
     public String toString() {
-        return getClass().getSimpleName() + "[result=" + result + ", transactionToken=" + transactionToken
-            + ", channelReference=" + channelReference + ", savedCard=" + savedCard + ", conversion=" + conversion + "]";
+        return getClass().getSimpleName() + "[result=" + result + ", transaction=" + transaction
+            + ", savedCard=" + savedCard + ", conversion=" + conversion + "]";
     }
 }

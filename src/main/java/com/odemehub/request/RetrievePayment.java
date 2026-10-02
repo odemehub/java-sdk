@@ -6,14 +6,14 @@ package com.odemehub.request;
  * browser cannot be given anything to sign with; this is the call that says
  * what became of it.
  */
-public final class RetrievePayment extends PaymentMessage {
+public final class RetrievePayment extends RetrieveByToken {
 
-    public RetrievePayment(String transactionToken) {
-        super(transactionToken);
+    public RetrievePayment(String token) {
+        super(token);
     }
 
     @Override
-    public String path() {
+    protected String endpoint() {
         return "retrieve-payment";
     }
 }

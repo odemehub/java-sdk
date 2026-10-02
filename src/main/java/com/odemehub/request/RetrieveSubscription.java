@@ -1,17 +1,18 @@
 package com.odemehub.request;
 
 /**
- * Where a subscription stands: what it is for, the period it is on and
- * whether that period has been paid for. Nothing is changed by asking.
+ * Where a subscription stands: what it is for, the renewal it is on and
+ * whether that has been paid, when the next is due, whether it has been
+ * called off, and whose it is.
  */
-public final class RetrieveSubscription extends SubscriptionMessage {
+public final class RetrieveSubscription extends RetrieveByToken {
 
-    public RetrieveSubscription(String subscriptionToken) {
-        super(subscriptionToken);
+    public RetrieveSubscription(String token) {
+        super(token);
     }
 
     @Override
-    public String path() {
+    protected String endpoint() {
         return "retrieve-subscription";
     }
 }

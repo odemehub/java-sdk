@@ -13,8 +13,8 @@ public final class RefundPayment extends PaymentMessage {
     /**
      * Give back everything the payment has left in it.
      */
-    public RefundPayment(String transactionToken) {
-        this(transactionToken, null);
+    public RefundPayment(String token) {
+        this(token, null);
     }
 
     /**
@@ -22,8 +22,8 @@ public final class RefundPayment extends PaymentMessage {
      *               point: "35.50". It is never more than the payment has
      *               left: the gateway turns down anything larger.
      */
-    public RefundPayment(String transactionToken, String amount) {
-        super(transactionToken);
+    public RefundPayment(String token, String amount) {
+        super(token);
         this.amount = amount;
     }
 

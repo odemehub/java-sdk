@@ -1,6 +1,6 @@
 # ödemehub Java SDK
 
-ödemehub ödeme geçidini kendi uygulamanızdan kullanmak için hazırlanmış Java istemcisi. Kart çekmek, 3D ödeme başlatmak, müşteriyi ödeme sayfasına yollamak, ürün kataloğunuzu eşlemek, abonelik açmak, kart saklamak, iade ve iptal yapmak ve bir kartın taksit seçeneklerini sormak için gereken her şey burada.
+ödemehub ödeme geçidini kendi uygulamanızdan kullanmak için hazırlanmış Java istemcisi. Kart çekmek, 3D ödeme başlatmak, müşteriyi ödeme sayfasına yollamak (sipariş, ödeme linki, abonelik), kart saklamak, iade ve iptal yapmak ve bir kartın taksit seçeneklerini sormak için gereken her şey burada.
 
 İstemci her isteği takımınızın gizli anahtarıyla imzalar, gelen her yanıtın imzasını doğrular. Siz imza, başlık ya da JSON ayrıntılarıyla uğraşmazsınız. İstekler Java'nın kendi `HttpClient`'ıyla gider; tek bağımlılık JSON için Jackson'dır.
 
@@ -14,14 +14,14 @@ Maven:
 <dependency>
     <groupId>com.odemehub</groupId>
     <artifactId>java-sdk</artifactId>
-    <version>1.0.0</version>
+    <version>2.0.0</version>
 </dependency>
 ```
 
 Gradle:
 
 ```groovy
-implementation 'com.odemehub:java-sdk:1.0.0'
+implementation 'com.odemehub:java-sdk:2.0.0'
 ```
 
 ## Yapılandırma
@@ -41,32 +41,64 @@ Client client = new Client(Options.builder()
     .build());
 ```
 
-Gizli anahtar hiçbir zaman tel üzerinden gitmez; yalnızca imza üretmekte kullanılır. Anahtarları kodun içine yazmayın, ortam değişkeninde tutun.
+Gizli anahtar hiçbir zaman tel üzerinden gitmez; yalnızca imza üretmekte kullanılır. Anahtarları kodun içine yazmayın, ortam değişkeninde tutun. İmza, isteğin atıldığı anı da kapsar: sunucunuzun saati beş dakikadan fazla kaymışsa istekler `AuthenticationException` ile geri çevrilir, saatinizi NTP ile eşitleyin.
 
-Kanal token'ı entegrasyonun tamamı için bir kez verilir. Birden çok kanalda satıyorsanız tek bir istekte `channelToken(...)` vererek o isteği başka kanala yazdırabilirsiniz. Geçit hiçbir yerde veritabanı numarası kullanmaz: kanal, ödeme hesabı, işlem, kayıtlı kart, abonelik ve sipariş her zaman token'ıyla adlanır.
+Kanal token'ı entegrasyonun tamamı için bir kez verilir. Birden çok kanalda satıyorsanız tek bir istekte `channelToken(...)` vererek o isteği başka kanala yazdırabilirsiniz. Geçit hiçbir yerde veritabanı numarası kullanmaz: kanal, ödeme hesabı, işlem, sipariş, ödeme linki, abonelik ve kayıtlı kart her zaman token'ıyla ya da sizin referansınızla adlanır.
 
 İstemci durum tutmaz; uygulama boyunca tek bir nesneyi bütün thread'lerde paylaşabilirsiniz (Spring'de bir `@Bean`). İstek bir dakika içinde yanıt almazsa kesilir; süreyi `Options.builder().timeout(Duration.ofSeconds(30))` ile değiştirebilirsiniz. Vekil sunucu gibi ayarlar için kendi `HttpClient`'ınızı `new Client(options, httpClient)` ile verebilirsiniz.
 
-İstekler `com.odemehub.request` paketindeki değişmez nesnelerdir; alanı çok olanlar builder ile, az olanlar yapıcıyla kurulur. Zorunlu bir alan eksikse `build()` `NullPointerException` fırlatır ve hangi alanın eksik olduğunu söyler. İsteğe bağlı bir alanı vermezseniz gövdeye hiç yazılmaz. Kart numarası ve güvenlik kodu `toString()` çıktısında `*****` görünür; kart nesnesi yanlışlıkla loglansa da kart bilgisi görünmez.
+Her uç için bir metot vardır ve adı uçla aynıdır: `create-order` → `client.createOrder(CreateOrder)`. İstekler `com.odemehub.request` paketindeki değişmez nesnelerdir; alanı çok olanlar builder ile, az olanlar yapıcıyla kurulur. Zorunlu bir alan eksikse `build()` `NullPointerException` fırlatır ve hangi alanın eksik olduğunu söyler. Alanların içeriğini SDK denetlemez, geçit denetler; reddedilen alanlar `ValidationException` ile döner. İsteğe bağlı bir alanı vermezseniz gövdeye hiç yazılmaz. Kart numarası ve güvenlik kodu `toString()` çıktısında `*****` görünür; kart nesnesi yanlışlıkla loglansa da kart bilgisi görünmez.
 
-İstek ve yanıt sınıfları aynı adları taşır (`request.SecurePayment` → `response.SecurePayment`). İkisini aynı dosyada kullanırken yanıtı `var` ile karşılamak en rahatıdır.
+Yanıtlar `com.odemehub.response` paketindedir ve API'nin JSON'unu iç içe olduğu gibi yansıtır: ödeme yanıtında ödeme `getTransaction()` altında, iadede iade `getRefund()` altında durur. Ödeme uçlarında istek ve yanıt sınıfları aynı adı taşır (`request.SecurePayment` → `response.SecurePayment`); ikisini aynı dosyada kullanırken yanıtı `var` ile karşılamak en rahatıdır.
 
-## Karttan doğrudan çekim
+Sabit değer kümeleri `com.odemehub.enums` paketindeki enum'lardır: `Currency`, `Period`, `OrderStatus`, `SubscriptionStatus`, `TransactionStatus`, `PaymentStatus`, `SecurityType`, `RefundType`, `RefundStatus`, `CardScheme`, `CardType`. Her biri geçidin yazdığı değeri `getValue()` ile verir. Geçit bu sürümün tanımadığı yeni bir değer gönderirse SDK çökmez; o alan `null` okunur.
 
-Müşteriyi bankasına göndermeden çekim yapar. Başarılı yanıt, paranın alındığı anlamına gelir.
+## Uçlar
+
+| Metot | Uç | Yanıt |
+| --- | --- | --- |
+| `securePayment` | `POST secure-payment` | `SecurePayment` |
+| `regularPayment` | `POST regular-payment` | `RegularPayment` |
+| `refundPayment` | `POST refund-payment` | `GiveBack` |
+| `cancelPayment` | `POST cancel-payment` | `GiveBack` |
+| `retrievePayment` | `GET retrieve-payment/{token}` | `Payment` |
+| `retrievePaymentByReference` | `POST retrieve-payment-by-reference` | `Payment` |
+| `retrievePaymentsByChannelReference` | `POST retrieve-payments-by-channel-reference` | `PaymentList` |
+| `retrieveBin` | `POST retrieve-bin` | `Bin` |
+| `createOrder` | `POST create-order` | `OrderDetails` |
+| `retrieveOrder` | `GET retrieve-order/{token}` | `OrderDetails` |
+| `retrieveOrderByReference` | `POST retrieve-order-by-reference` | `OrderDetails` |
+| `retrieveOrdersByChannelReference` | `POST retrieve-orders-by-channel-reference` | `OrderList` |
+| `updateOrder` | `POST update-order/{token}` | `OrderDetails` |
+| `createPaymentLink` | `POST create-payment-link` | `PaymentLinkDetails` |
+| `retrievePaymentLink` | `GET retrieve-payment-link/{token}` | `PaymentLinkDetails` |
+| `retrievePaymentLinkByReference` | `POST retrieve-payment-link-by-reference` | `PaymentLinkDetails` |
+| `retrievePaymentLinksByChannelReference` | `POST retrieve-payment-links-by-channel-reference` | `PaymentLinkList` |
+| `updatePaymentLink` | `POST update-payment-link/{token}` | `PaymentLinkDetails` |
+| `createSubscription` | `POST create-subscription` | `SubscriptionDetails` |
+| `retrieveSubscription` | `GET retrieve-subscription/{token}` | `SubscriptionDetails` |
+| `retrieveSubscriptionByReference` | `POST retrieve-subscription-by-reference` | `SubscriptionDetails` |
+| `retrieveSubscriptionsByChannelReference` | `POST retrieve-subscriptions-by-channel-reference` | `SubscriptionList` |
+| `updateSubscription` | `POST update-subscription/{token}` | `SubscriptionDetails` |
+| `createSavedCard` | `POST create-saved-card` | `SavedCardDetails` |
+| `retrieveSavedCard` | `GET retrieve-saved-card/{token}` | `SavedCardDetails` |
+| `retrieveSavedCardsByReference` | `POST retrieve-saved-cards-by-reference` | `SavedCardList` |
+| `updateSavedCard` | `POST update-saved-card/{token}` | `SavedCardDetails` |
+| `deleteSavedCard` | `POST delete-saved-card/{token}` | `DeletedSavedCard` |
+
+Her kaynağa aynı yoldan ulaşılır: `create-*` açar ve token'ını döner, `retrieve-*/{token}` token'la sorar, `retrieve-*-by-reference` sizin referansınızla en son kaydı bulur, `retrieve-*-by-channel-reference` bir kanaldaki kayıtları en fazla yedi günlük aralıkla listeler, `update-*/{token}` yalnızca gönderdiğiniz alanları değiştirir. Silinebilen tek kaynak kayıtlı karttır.
+
+## Müşteri
+
+Müşteri üç parçadan oluşur: sizdeki referansı (`reference`), fatura adresi (`billingAddress`) ve teslimat adresi (`shippingAddress`). Adreslerde ad, soyad, e-posta, telefon, adres, ilçe, il ve ülke vardır; şirket adına alışverişte fatura adresine `companyTitle`, `taxNumber` ve `taxOffice` üçü birlikte eklenir.
 
 ```java
-import com.odemehub.request.Card;
+import com.odemehub.request.Address;
 import com.odemehub.request.Customer;
-import com.odemehub.request.RegularPayment;
 
-var payment = client.regularPayment(RegularPayment.builder()
-    .channelReference("SIP-10231")          // işlemin sizdeki referansı
-    .amount("450.00")
-    .installmentNumber(1)
-    .ip(request.getRemoteAddr())
-    .customer(Customer.builder()
-        .channelReference("musteri-88")
+Customer customer = Customer.builder()
+    .reference("musteri-88")   // müşterinin sizdeki referansı
+    .billingAddress(Address.builder()
         .firstname("Ahmet")
         .lastname("Yılmaz")
         .email("ahmet@ornek.com")
@@ -76,9 +108,29 @@ var payment = client.regularPayment(RegularPayment.builder()
         .province("Ankara")
         .country("Türkiye")
         .build())
+    .build();
+```
+
+- **Ödeme ve kart saklama:** fatura adresinin sekiz alanı da zorunludur; teslimat adresi gönderilmez. Referans, kart saklayan ya da kayıtlı kartla yapılan ödemede ve kart saklamada zorunludur.
+- **Sipariş ve abonelik:** elinizde ne varsa onu gönderin; ödeme sayfası eksikleri müşteriye sorar. Abonelikte referans zorunludur; referanssız açılan siparişe ödeme yapılınca geçit `guest-` ile başlayan bir referans verir.
+
+## Karttan doğrudan çekim
+
+Müşteriyi bankasına göndermeden çekim yapar. Başarılı yanıt, paranın alındığı anlamına gelir.
+
+```java
+import com.odemehub.request.Card;
+import com.odemehub.request.RegularPayment;
+
+var payment = client.regularPayment(RegularPayment.builder()
+    .channelReference("SIP-10231")          // işlemin sizdeki referansı, en az bir rakam
+    .amount("450.00")
+    .installmentNumber(1)
+    .ip(request.getRemoteAddr())
+    .customer(customer)
     .card(Card.builder()
         .holderName("AHMET YILMAZ")
-        .number("5400360000000003")
+        .number("5400 3600 0000 0003")      // boşluklu ya da boşluksuz
         .expiryMonth("12")
         .expiryYear("2030")
         .securityCode("000")
@@ -86,11 +138,15 @@ var payment = client.regularPayment(RegularPayment.builder()
     .build());
 
 if (payment.getResult().isSuccessful()) {
-    // payment.getTransactionToken() — ödemenin geçitteki token'ı; iade ve iptalde bununla adlandırılır
+    payment.getTransaction().getToken();         // iade, iptal ve sorguda bununla adlandırılır
+    payment.getTransaction().getStatus();        // TransactionStatus.SUCCESSFUL
+    payment.getTransaction().getPaymentStatus(); // PaymentStatus.PAID
 }
 ```
 
-Tutarlar her zaman `String`'dir (`"450.00"`): imzalanıp gönderildiği gibi kalır, yolda yuvarlanmaz.
+Tutarlar her zaman `String`'dir (`"450.00"`): imzalanıp gönderildiği gibi kalır, yolda yuvarlanmaz. Tutar sıfırdan büyük ve en fazla 10.000.000,00 olabilir; kuruş noktayla ayrılır.
+
+Yanıttaki `getTransaction()` ödemeyi bütünüyle taşır: `getToken()`, `getChannelToken()`, `getChannelReference()`, `getStatus()`, `getPaymentStatus()`, `getSecurityType()`, `getAmount()`, `getBaseAmount()`, `getCurrency()`, `getInstallmentNumber()`, `isTest()`, `getCreatedAt()`; `isSuccessful()` ve `isFinished()` kısayolları da vardır. `getCustomer()` ödemenin müşteri kopyasını (`getReference()`, `getBillingAddress()`), `getConversion()` kur çevirisini, `getSavedCard()` saklanan kartı verir.
 
 ## 3D ödeme
 
@@ -105,7 +161,6 @@ var payment = client.securePayment(SecurePayment.builder()
     .installmentNumber(1)
     .ip(request.getRemoteAddr())
     .callbackUrl("https://magazam.com/odeme/donus")
-    .webhookUrl("https://magazam.com/odemehub/odeme")   // isteğe bağlı, aşağıya bakın
     .customer(customer)
     .card(card)
     .build());
@@ -143,288 +198,269 @@ public String odemeDonus(@RequestParam("transaction_token") String transactionTo
 }
 ```
 
-Neden böyle: o POST'u bizim sunucumuz değil, müşterinin tarayıcısı gönderir; tarayıcıya imzalayacak bir sır verilemez. `successful` alanına bakıp sipariş kapatmayın — onu herkes gönderebilir; yalnız "başarısız" ipucunda gereksiz sorgudan kaçınmak için kullanın. Geçide sorduğunuz yanıt ise her zaman imzalıdır ve SDK imzayı sizin için doğrular. Başkasının işlemini sorarsanız `ValidationException` alırsınız.
+Neden böyle: o POST'u bizim sunucumuz değil, müşterinin tarayıcısı gönderir; tarayıcıya imzalayacak bir sır verilemez. `successful` alanına bakıp sipariş kapatmayın — onu herkes gönderebilir; yalnız "başarısız" ipucunda gereksiz sorgudan kaçınmak için kullanın. Geçide sorduğunuz yanıt ise her zaman imzalıdır ve SDK imzayı sizin için doğrular. Çalışma alanınızda olmayan bir token sorarsanız `NotFoundException` alırsınız.
 
-### Ödeme bildirimi (webhook)
+Müşteri bankadan sonra sekmeyi kapatırsa tarayıcı `callbackUrl` adresinize hiç dönmez; bunun için panelde kanala `transaction.*` webhook'u tanımlayın (bkz. [Webhook](#webhook)).
 
-Müşteri bankadan sonra sekmeyi kapatırsa tarayıcı `callbackUrl` adresinize hiç dönmez. Bunun için ödemeyi başlatırken `webhookUrl` verin: ödeme bankada bitince (ya da müşteri bankanın sayfasını hiç açmayıp süresi dolunca) geçidin **kendi sunucusu** o adrese imzalı bir POST gönderir. Gövde `retrievePayment()` yanıtının aynısıdır, üstüne hangi duruma gelindiğini söyleyen `event` eklenir: `successful`, `failed` ya da `expired`. Gövdeyi abonelik bildirimindeki gibi **ham** (`byte[]`) okuyun.
+## Ödemeyi sorgulamak
+
+Ödemenin token'ı elinizdeyse `retrievePayment()`, yalnızca kendi referansınız varsa `retrievePaymentByReference()` kullanın; ikincisi o referansla yapılmış **en son** ödemeyi döner. Bağlantı koptuğu için yanıtını alamadığınız bir ödemeyi yeniden denemeden önce bununla sorun.
 
 ```java
-@PostMapping("/odemehub/odeme")
-public ResponseEntity<Void> odemeBildirimi(
-    @RequestBody byte[] payload,
-    @RequestHeader(value = "X-Signature", required = false) String signature
-) {
-    com.odemehub.response.TransactionWebhook webhook;
+import com.odemehub.request.RetrievePaymentByReference;
+import com.odemehub.request.RetrievePaymentsByChannelReference;
 
-    try {
-        webhook = client.transactionWebhook(payload, signature);
-    } catch (SignatureException exception) {
-        return ResponseEntity.badRequest().build();
-    }
+var latest = client.retrievePaymentByReference(new RetrievePaymentByReference("SIP-10232"));
 
-    if (webhook.isSuccessful()) {
-        siparisiOdendiIsaretle(webhook.getChannelReference(), webhook.getTransactionToken());
-    }
+// Bir kanaldaki bütün denemeler (reddedilen ve süresi dolanlar dahil), eskiden yeniye.
+// Tarihler çalışma alanınızın saat diliminde, en fazla 7 gün; verilmezse son 7 gün.
+var payments = client.retrievePaymentsByChannelReference(new RetrievePaymentsByChannelReference("2026-09-26", "2026-10-02"));
 
-    return ResponseEntity.ok().build();
+for (var attempt : payments.getPayments()) {
+    System.out.println(attempt.getChannelReference() + " " + attempt.getStatus() + " " + attempt.getPaymentStatus() + " " + attempt.getErrorMessage());
 }
 ```
 
-Ödeme başlatılırken reddedilen (yanıtı anında aldığınız) ödeme için bildirim gitmez. Aynı sipariş için birden fazla deneme olabildiğinden bildirimi `getTransactionToken()` ile tekilleştirin. 2xx dışında bir yanıt (ya da yanıtsızlık) başarısız sayılır; bildirim 5 dakika sonra bir kez daha denenir ve ulaşmayan bildirimler panelde işlemin sayfasında listelenir. Bildirim hiç gelmezse `retrieveTransactions()` ile sorabilirsiniz (aşağıda).
+Listedeki her deneme (`response.Transaction`) `getToken()`, `getStatus()` (`TransactionStatus`: `STARTED`, `REDIRECTED_TO_SECURE_PAGE`, `RETURNED_FROM_SECURE_PAGE`, `TIMEOUT`, `FAILED`, `EXPIRED`, `SUCCESSFUL`), `getPaymentStatus()` (`PaymentStatus`: `UNPAID`, `PAID`, `CANCELLED`, `REFUNDED`, `PARTIALLY_REFUNDED`), `getSecurityType()`, `getAmount()` / `getBaseAmount()` / `getCurrency()`, `getInstallmentNumber()`, `isTest()`, `getErrorCode()` / `getErrorMessage()`, `getCreatedAt()`, `getCustomer()`, `getConversion()` ve bağlı olduğu `getOrderToken()` / `getPaymentLinkToken()` / `getSubscriptionToken()` alanlarını taşır. Ödeme sayfasında yapılan denemeler de burada görünür. `payments.successful()` geçen denemeleri verir.
 
-### Bir referansın bütün denemeleri
+## Kalemler ve gönderim yöntemleri
 
-Elinizde yalnızca kendi sipariş numaranız varsa, o numara altında yapılmış **bütün** ödeme denemelerini — hangisi reddedildi, hangisi geçti — eskiden yeniye listeleyin:
-
-```java
-import com.odemehub.request.RetrieveTransactions;
-
-var attempts = client.retrieveTransactions(new RetrieveTransactions("SIP-10232"));
-
-for (var attempt : attempts.getTransactions()) {
-    System.out.println(attempt.getStatus() + " " + attempt.getPaymentStatus() + " " + attempt.getErrorMessage());
-}
-
-var paid = attempts.successful();   // geçen deneme ya da null
-```
-
-Her deneme `getToken()`, `getStatus()` (`started`, `redirected_to_secure_page`, `returned_from_secure_page`, `failed`, `expired`, `successful`), `getPaymentStatus()` (`unpaid`, `paid`, `cancelled`, `refunded`, `partially_refunded`), `getSecurityType()`, `getAmount()` / `getBaseAmount()` / `getCurrency()`, `getInstallmentNumber()`, `isTest()`, `getErrorCode()` / `getErrorMessage()`, `getCreatedAt()`, `getCustomerChannelReference()`, `getConversion()` ve bağlı olduğu `getOrderToken()` / `getSubscriptionToken()` alanlarını taşır. Ödeme sayfasından açılan siparişin denemeleri de siparişin referansı altında burada görünür.
-
-## Ürünler
-
-Sipariş kalemleri ve abonelikler ürünleri **sizdeki referanslarıyla** adlandırır. Ürünü panelde (Ürünler sayfası) tanımlayabilir ya da kendi kataloğunuzdan geçide yazabilirsiniz:
+Sipariş, ödeme linki ve abonelik kalemlerden oluşur. Her kalem kendi adını ve fiyatını taşır; katalogdan hiçbir şey okunmaz. Birim fiyat **KDV dahildir**: %20 KDV'li 120,00'lik bir kalemin 100,00'ü mal, 20,00'si vergidir. Toplamı siz göndermezsiniz; geçit kalemleri toplar ve yanıtta `getSubtotal()`, `getTaxAmount()` ve `getAmount()` olarak döner.
 
 ```java
-import com.odemehub.request.SaveProduct;
+import com.odemehub.request.Item;
+import com.odemehub.request.ShippingMethod;
 
-var product = client.saveProduct(SaveProduct.builder()
-    .channelReference("KAHVE-MAKINESI")
-    .name("Kahve makinesi")
-    .type("simple")          // simple | recurring
-    .amount("450.00")
-    .taxRate("20")           // fiyatın içindeki KDV oranı
-    .image("https://magazam.com/img/kahve-makinesi.jpg") // ödeme sayfasında gösterilir
-    .build());
+var items = List.of(
+    Item.builder().name("Kahve makinesi").unitAmount("450.00").quantity(1).taxRate("20")
+        .channelReference("KAHVE-MAKINESI")                              // isteğe bağlı
+        .image("https://magazam.com/img/kahve-makinesi.jpg")              // isteğe bağlı
+        .build(),
+    Item.builder().name("Kahve 500 g").unitAmount("180.00").quantity(2).taxRate("10").build()
+);
 
-client.saveProduct(SaveProduct.builder()
-    .channelReference("PREMIUM-AYLIK")
-    .name("Premium üyelik")
-    .type("recurring")
-    .amount("149.90")
-    .taxRate("20")
-    .period("monthly")       // monthly | annually — yalnız recurring için zorunlu
-    .build());
+var shippingMethods = List.of(
+    new ShippingMethod("standart", "Standart Kargo", "49.90", "20"),
+    new ShippingMethod("ucretsiz", "Mağazadan Teslim", "0", "0")
+);
 ```
 
-Aynı kanalda aynı referans aynı üründür: tekrar gönderirseniz ikinci ürün açılmaz, mevcut olan güncellenir. `currency` verilmezse TRY, `isActive` verilmezse `true` kabul edilir. Ürün silinmez; `isActive(false)` ile satışa kapatılır. `image` yalnızca `https://` adres alır; göndermezseniz ürün mevcut görselini (panelden yüklenmiş olanı da) korur, boş metin gönderirseniz görsel kaldırılır.
+Sipariş ve abonelikte en fazla 20 gönderim yöntemi verebilirsiniz; müşteri ödeme sayfasında birini seçer ve ücreti toplama eklenir. `handle` sizdeki anahtardır, listede tekil olmalıdır. `requiresShippingAddress(true)` verirseniz ödeme sayfası teslimat adresini de sorar.
 
-Ödeme istekleri ürünü hiçbir zaman değiştirmez; ürünün tek yazıldığı yer bu çağrı ve panel.
-
-## Ödeme sayfası
+## Sipariş (ödeme sayfası)
 
 Kart bilgisini hiç görmek istemiyorsanız sipariş açıp müşteriyi geçidin kendi sayfasına yollayabilirsiniz.
 
 ```java
-import com.odemehub.request.OrderItem;
-import com.odemehub.request.OrderPayment;
+import com.odemehub.request.CreateOrder;
 
-var order = client.orderPayment(OrderPayment.builder()
+var created = client.createOrder(CreateOrder.builder()
     .channelReference("SIPARIS-10233")
     .successUrl("https://magazam.com/tesekkurler")
     .cancelUrl("https://magazam.com/sepet")
-    .webhookUrl("https://magazam.com/odemehub/siparis")   // isteğe bağlı, aşağıya bakın
+    .items(items)
+    .shippingMethods(shippingMethods)
+    .requiresShippingAddress(true)
     .customer(customer)
-    .items(List.of(
-        OrderItem.of("KAHVE-MAKINESI"),
-        OrderItem.builder().channelReference("KAHVE-500G").quantity(2).unitAmount("180.00").build(),
-        OrderItem.builder().channelReference("HEDIYE-PAKETI").name("Hediye paketi").unitAmount("25.00")
-            .image("https://magazam.com/img/hediye-paketi.jpg").build()
-    ))
     .build());
+
+var order = created.getOrder();
+order.getToken();   // siparişi sonra sorgulamak ve değiştirmek için saklayın
 
 return "redirect:" + order.getCheckoutUrl();
 ```
 
-Sipariş tutarını göndermezsiniz; geçit kalemleri toplar ve `order.getAmount()` olarak döner. Bir kalemin boş bıraktığı ad, fiyat ve KDV oranı kayıtlı üründen gelir; kalemde verdiğiniz değerler yalnızca o sipariş için geçerlidir, ürünü değiştirmez. Kayıtlı olmayan bir referansla da kalem gönderebilirsiniz, ama o zaman `name` ve `unitAmount` zorunludur. Kalemin `image` alanı (`https://` adres) ödeme sayfasında kalemin yanında gösterilir; verilmezse kayıtlı ürünün görseli kullanılır, ürün kayıtlı değilse kalem görselsiz görünür.
+Aynı kanalda aynı referansla tekrar `createOrder` çağırırsanız yeni sipariş açılmaz: açık sipariş gönderdiklerinizle güncellenir ve aynı token'la döner. Ödenmiş ya da ödemesi sürmekte olan sipariş değiştirilemez; istek `order.channel_reference` alanında reddedilir.
 
 Ödeme tamamlanınca müşteri, 3D'dekiyle aynı biçimde `successUrl` adresinize döner: aynı üç alan gelir, sonucu yine `retrievePayment()` ile sorarsınız. Müşteri ödeme sayfasında karttan kaynaklı bir hata alırsa size dönmez, sayfada kalıp başka kartla dener.
 
-Yanıt (`response.Order`) siparişi bütünüyle taşır: `getToken()`, `getChannelReference()`, `getDescription()`, `getStatus()` (`open` / `paid`), `getItems()`, `getSubtotal()`, `getTaxAmount()`, `getAmount()`, `getCurrency()`, `getIsTest()`, `getCreatedAt()`, `getCheckoutUrl()` (ödenince `null`) ve ödeyen işlemin token'ı `getTransactionToken()` (açıkken `null`). Aynı nesne `retrieveOrder()` ve sipariş bildiriminde de gelir.
+`response.Order` siparişi bütünüyle taşır: `getToken()`, `getChannelToken()`, `getChannelReference()`, `getDescription()`, `getPaymentProviderToken()`, `getStatus()` (`OrderStatus.OPEN` / `PAID`), `getItems()`, `getShippingMethods()`, `getShippingMethod()` (müşterinin seçtiği, seçene kadar `null`), `getSubtotal()`, `getShippingAmount()`, `getTaxAmount()`, `getAmount()`, `getCurrency()`, `isTest()`, `getCreatedAt()`, `getCheckoutUrl()` (ödenebilir değilse `null`), ödeyen işlem `getTransaction()` (açıkken `null`) ve müşteri `getCustomer()` (`getReference()`, `getBillingAddress()`, `getShippingAddress()`). Müşteri `OrderDetails` üzerinde de (`created.getCustomer()`) aynen durur; listelerde siparişin kendisindedir.
 
-### Sipariş bildirimi (webhook) ve sipariş sorgusu
-
-Müşteri ödedikten sonra sekmeyi kapatırsa tarayıcı `successUrl` adresinize hiç dönmez. Siparişi açarken `webhookUrl` verirseniz sipariş ödendiği an geçidin **kendi sunucusu** o adrese imzalı bir POST gönderir; gövde `event: "paid"` ve siparişin kendisidir (`getTransactionToken()` dolu gelir). Başarısız denemeler bildirilmez — sipariş açık kalır, müşteri sayfada yeniden dener.
-
-```java
-@PostMapping("/odemehub/siparis")
-public ResponseEntity<Void> siparisBildirimi(
-    @RequestBody byte[] payload,
-    @RequestHeader(value = "X-Signature", required = false) String signature
-) {
-    com.odemehub.response.OrderWebhook webhook;
-
-    try {
-        webhook = client.orderWebhook(payload, signature);
-    } catch (SignatureException exception) {
-        return ResponseEntity.badRequest().build();
-    }
-
-    if (webhook.isPaid()) {
-        siparisiOdendiIsaretle(webhook.getOrder().getChannelReference(), webhook.getOrder().getTransactionToken());
-    }
-
-    return ResponseEntity.ok().build();
-}
-```
-
-Elinizde siparişin token'ı varsa durumunu her zaman kendiniz de sorabilirsiniz:
+Sorgu ve değişiklik:
 
 ```java
 import com.odemehub.request.RetrieveOrder;
+import com.odemehub.request.RetrieveOrderByReference;
+import com.odemehub.request.RetrieveOrdersByChannelReference;
+import com.odemehub.request.UpdateOrder;
 
-var order = client.retrieveOrder(new RetrieveOrder(token));
+var order = client.retrieveOrder(new RetrieveOrder(token)).getOrder();
+var sameOrder = client.retrieveOrderByReference(new RetrieveOrderByReference("SIPARIS-10233")).getOrder();
+var lastWeek = client.retrieveOrdersByChannelReference(new RetrieveOrdersByChannelReference()).getOrders();
 
 if (order.isPaid()) {
-    // order.getTransactionToken() ile iade / iptal / retrievePayment yapılabilir
+    order.getTransaction().getToken();   // iade / iptal / retrievePayment için
 }
+
+// Yalnızca gönderdiğiniz alanlar yazılır; kalem gönderirseniz eski kalemlerin hepsinin yerine geçer.
+client.updateOrder(UpdateOrder.builder(token)
+    .items(items)
+    .description("Hediye paketli")
+    .clear("cancel_url")           // bir alanı boşaltmak için adını verin
+    .build());
 ```
 
-Siparişin bütün denemelerini (reddedilenler dahil) görmek için `retrieveTransactions()` ile siparişin `channelReference` değerini sorun.
+Değişiklikte kanal yalnızca `channelToken(...)` verirseniz yazılır; istemcinin kanalı gönderilmez. Gönderdiğiniz müşteri alanları siparişteki müşterinin üzerine yazılır.
+
+Müşteri ödedikten sonra sekmeyi kapatırsa tarayıcı `successUrl` adresinize hiç dönmez; panelde kanala `order.paid` webhook'u tanımlayın (bkz. [Webhook](#webhook)). Siparişin bütün denemelerini (reddedilenler dahil) görmek için `retrievePaymentsByChannelReference()` listesinde `getOrderToken()` değerine bakın.
+
+## Ödeme linki
+
+Ödeme linki, adresi bilen herkesin tekrar tekrar ödeyebildiği bir sayfadır; kapatılana ya da son günü geçene kadar ödeme alır. Müşteri istemez; ödeyen kişi kendini sayfada tanıtır.
+
+```java
+import com.odemehub.enums.Currency;
+import com.odemehub.request.CreatePaymentLink;
+
+var link = client.createPaymentLink(CreatePaymentLink.builder()
+    .items(items)
+    .currency(Currency.TRY)
+    .channelReference("LINK-77")      // isteğe bağlı, en az bir rakam; verilmezse geçit verir
+    .description("Atölye kaydı")
+    .expiresAt("2026-12-31")          // son gün, çalışma alanınızın saat diliminde; verilmezse süresiz
+    .build()).getPaymentLink();
+
+link.getCheckoutUrl();   // müşteriyle paylaşacağınız adres
+```
+
+`response.PaymentLink`: `getToken()`, `getChannelToken()` (ödemehub kanalındaysa `null`), `getChannelReference()`, `getDescription()`, `getPaymentProviderToken()`, `getItems()`, `getSubtotal()`, `getTaxAmount()`, `getAmount()`, `getCurrency()`, `isActive()` (açık ve son günü geçmemiş), `isTest()`, `getExpiresAt()` (son an, ISO 8601 UTC), `getCheckoutUrl()` (ödenemiyorsa `null`), `getCreatedAt()`.
+
+```java
+import com.odemehub.request.RetrievePaymentLink;
+import com.odemehub.request.UpdatePaymentLink;
+
+var details = client.retrievePaymentLink(new RetrievePaymentLink(token));
+details.getPaymentLink().isActive();
+details.getTransactionsCount();   // linkteki toplam deneme sayısı
+details.getTransactions();        // son 50 deneme, yeniden eskiye
+details.successful();             // bunlardan geçenler
+
+client.updatePaymentLink(UpdatePaymentLink.builder(token).isActive(false).build());   // kapat
+client.updatePaymentLink(UpdatePaymentLink.builder(token).isActive(true).expiresAt("2027-01-31").build());
+```
+
+Panelde açılan linkler çalışma alanınızın kendi ödemehub kanalındadır. O linklere ulaşmak için kanal olarak `ChannelMessage.ODEMEHUB_CHANNEL` verin: `new RetrievePaymentLinkByReference("LINK1", ChannelMessage.ODEMEHUB_CHANNEL)`. Linkin denemelerinin tamamı `retrievePaymentsByChannelReference()` ile okunur.
 
 ## Abonelikler
 
-Müşteriden dönem dönem tahsilat yapmak için abonelik açarsınız. Neye abone olunduğu bir ya da birkaç **abonelik ürünüdür** (`type("recurring")`), sizdeki referanslarıyla adlandırılır; fiyatı, para birimini ve dönemini ürün taşır. Aynı aboneliğe konan ürünlerin dönemi ve para birimi aynı olmalıdır. Bir kaleme `image` (`https://` adres) verirseniz ödeme sayfasında ürünün görseli yerine o gösterilir.
+Müşteriden dönem dönem tahsilat yapmak için abonelik açarsınız. İlk ödeme geçidin kendi sayfasında yapılır ve kart müşterinin varsayılan kartı olarak saklanır; sonraki yenilemeler o karttan çekilir. Abonelik, siparişle aynı alanları (kalemler, gönderim yöntemleri, müşteri, adresler) ve ek olarak dönemi alır.
 
 ```java
-import com.odemehub.request.SubscriptionItem;
-import com.odemehub.request.SubscriptionPayment;
+import com.odemehub.enums.Period;
+import com.odemehub.request.CreateSubscription;
 
-var subscription = client.subscriptionPayment(SubscriptionPayment.builder()
+var subscription = client.createSubscription(CreateSubscription.builder()
     .channelReference("UYELIK-4471")
-    .items(List.of(
-        SubscriptionItem.of("PREMIUM-AYLIK"),
-        SubscriptionItem.builder().channelReference("EK-KULLANICI").quantity(3).build()
-    ))
+    .period(Period.MONTHLY)             // DAILY | WEEKLY | MONTHLY | ANNUALLY
+    .renewalLimit(12)                   // isteğe bağlı; verilmezse iptal edilene kadar sürer
+    .items(List.of(Item.builder().name("Premium üyelik").unitAmount("149.90").quantity(1).taxRate("20").build()))
     .successUrl("https://magazam.com/tesekkurler")
-    .customer(customer)
-    .build());
+    .customer(Customer.builder().reference("musteri-88").build())   // referans zorunlu
+    .build()).getSubscription();
 
-subscription.getToken(); // aboneliği sonra sorgulamak ve iptal etmek için saklayın
+subscription.getToken(); // aboneliği sonra sorgulamak ve değiştirmek için saklayın
 
 return "redirect:" + subscription.getCheckoutUrl();
 ```
 
-Bir kaleme `unitAmount` verirseniz o fiyat **yalnızca ilk dönem** için geçerlidir (ör. ilk ay yarı fiyat); sonraki dönemler ürünün kendi fiyatından çekilir.
+Aboneliğin açılabilmesi için ödeme hesabının kart saklayabiliyor ve 3D ödeme alabiliyor olması, planınızın da kayıtlı kartları kapsaması gerekir; aksi halde istek `subscription.payment_provider_token` alanında reddedilir.
 
-İlk ödeme her zaman geçidin kendi sayfasında yapılır ve kart zorunlu olarak saklanır: sonraki dönemler o karttan çekilir. Ödeme tamamlanınca müşteri `successUrl` adresinize döner ve sonucu yine `retrievePayment()` ile sorarsınız; abonelik `active` olur ve aşağıdaki bildirim de gider.
-
-Dönem bitince yeni dönem açılır ve müşterinin varsayılan kartından çekilir. Banka kabul etmezse çekim bir buçuk gün içinde beş kez denenir (araları 3, 6, 9 ve 12 saat); bu sırada abonelik `active` kalır. Beşinci deneme de olmazsa abonelik `past_due` olur; çalışma alanı yöneticilerinize e-posta, `webhookUrl` adresinize bildirim gider. İkisi de o dönemin dilediği kartla ödenebileceği bağlantıyı taşır; bağlantıyı müşterinize siz iletirsiniz. Süre sınırı yoktur; müşteri ödediği anda abonelik kaldığı yerden devam eder.
-
-Aboneliğin durumunu sorabilirsiniz:
+Dönem bitince yeni dönem müşterinin varsayılan kartından çekilir. Banka kabul etmezse çekim beş kez denenir; bu sırada abonelik `active` kalır. Son deneme de olmazsa abonelik `past_due` olur ve panelde tanımlı webhook adresinize `subscription.past_due` gider; o dönemin ödenebileceği adres `getCheckoutUrl()`'dedir, müşterinize siz iletirsiniz. Müşteri ödediği anda abonelik kaldığı yerden devam eder.
 
 ```java
 import com.odemehub.request.RetrieveSubscription;
 
-var subscription = client.retrieveSubscription(new RetrieveSubscription(token));
+var subscription = client.retrieveSubscription(new RetrieveSubscription(token)).getSubscription();
 
-subscription.getStatus();      // pending | active | past_due | cancelled
-subscription.getAmount();      // 149.90 — içinde bulunulan dönemin fiyatı
-subscription.getEndsAt();      // sonraki tahsilat zamanı
-subscription.getCheckoutUrl(); // ödenmemiş dönem varsa müşteriye verilecek adres
-
-for (var item : subscription.getItems()) {
-    System.out.println(item.getQuantity() + " x " + item.getName() + " (" + item.getChannelReference() + ")");
-}
-
-if (subscription.isPastDue()) {
-    // müşteriyi kendi ödeme sayfanızda uyarabilirsiniz
-}
+subscription.getStatus();                 // SubscriptionStatus: PENDING | ACTIVE | PAST_DUE | CANCELLED | COMPLETED
+subscription.getRenewalsPaid();           // ödenen yenileme sayısı
+subscription.getRenewal().getAmount();    // içinde bulunulan dönemin tutarı
+subscription.getRenewal().getEndsAt();    // dönemin bittiği an
+subscription.getNextPaymentAt();          // sonraki tahsilat
+subscription.getCheckoutUrl();            // ödenmemiş dönem varsa müşteriye verilecek adres
+subscription.getCustomer().getReference();
 ```
 
-Tutar, aboneliğin **içinde bulunduğu dönemin** fiyatıdır. Ürünün fiyatını yükseltirseniz yürüyen dönem çekildiği fiyatta kalır, yeni fiyat sonraki dönemden itibaren işler.
+`retrieveSubscriptionByReference()` ve `retrieveSubscriptionsByChannelReference()` siparişteki gibi çalışır.
 
-İptalde ödenmiş günler yanmaz:
+Değiştirmek ve iptal etmek için `updateSubscription()` kullanılır. İlk ödemeden önce her alan değişebilir; ilk ödemeden sonra kanal, ödeme hesabı, para birimi, dönem ve müşteri referansı açıldığı gibi kalır (farklı değer gönderirseniz `ValidationException`). Gönderdiğiniz kalemler henüz ödenmemiş bütün yenilemelerin fiyatını değiştirir.
 
 ```java
-import com.odemehub.request.CancelSubscription;
+import com.odemehub.enums.SubscriptionStatus;
+import com.odemehub.request.UpdateSubscription;
 
-var subscription = client.cancelSubscription(new CancelSubscription(token));
+// Kalemleri değiştir
+client.updateSubscription(UpdateSubscription.builder(token).items(newItems).build());
 
-subscription.getCancelledAt(); // iptal edildiği an
-subscription.getEndsAt();      // hizmetin süreceği son gün
-subscription.isCancelled();    // ödenmiş dönem sürüyorsa henüz false
+// İptal: ödenmiş günler yanmaz, iade yapılmaz
+var cancelled = client.updateSubscription(UpdateSubscription.builder(token).status(SubscriptionStatus.CANCELLED).build()).getSubscription();
+cancelled.getCancelledAt();
 ```
 
-Müşteri, ödediği dönemin sonuna kadar hizmeti almaya devam eder; o güne kadar abonelik `active` görünür, dönem bitince `cancelled` olur ve bir daha tahsilat yapılmaz. Ödenmemiş bir aboneliğin (ilk ödemesi yapılmamış ya da `past_due`) iptali hemen geçerlidir. İade yapılmaz.
+İptal edilen abonelikte müşteri ödediği dönemin sonuna kadar hizmeti almaya devam eder ve bir daha tahsilat yapılmaz.
 
-Aboneliğin açılabilmesi için varsayılan ödeme hesabınızın kart saklayabiliyor olması gerekir; saklamayan bir hesapla açmaya çalışırsanız istek `subscription.payment_provider_token` alanında reddedilir.
+## Webhook
 
-### Abonelik bildirimleri (webhook)
+Sipariş ödendiğinde, link ödemesi alındığında, abonelik durum değiştirdiğinde, API ödemesi bittiğinde ve bir ödeme iade ya da iptal edildiğinde geçidin **kendi sunucusu** imzalı bir JSON POST gönderir. Müşteri sekmeyi kapatıp `callbackUrl` / `successUrl` adresinize hiç dönmese de bu bildirim gelir. Adresler kodda verilmez; panelde **Ayarlar → Webhook** sayfasında kanal, olay ve adres seçilerek tanımlanır.
 
-Abonelik açarken `webhookUrl` verirseniz, aboneliğin durumu her değiştiğinde o adrese imzalı bir POST gönderilir. Gövde düz JSON'dur ve imza `X-Signature` başlığındadır — yani geçidin API yanıtlarıyla aynı yöntem.
+| Kaynak | Olaylar |
+| --- | --- |
+| Sipariş | `order.paid`, `order.payment_refunded`, `order.payment_cancelled` |
+| Ödeme linki | `payment_link.paid`, `payment_link.payment_refunded`, `payment_link.payment_cancelled` |
+| Abonelik | `subscription.active`, `subscription.past_due`, `subscription.cancelled`, `subscription.ended`, `subscription.completed`, `subscription.payment_refunded`, `subscription.payment_cancelled` |
+| API ödemesi | `transaction.successful`, `transaction.failed`, `transaction.expired`, `transaction.payment_refunded`, `transaction.payment_cancelled` |
 
-```java
-var subscription = client.subscriptionPayment(SubscriptionPayment.builder()
-    .channelReference("UYELIK-4471")
-    .items(List.of(SubscriptionItem.of("PREMIUM-AYLIK")))
-    .successUrl("https://magazam.com/tesekkurler")
-    .customer(customer)
-    .webhookUrl("https://magazam.com/odemehub/abonelik")
-    .build());
-```
+Sipariş, link ya da abonelikte alınan ödeme için `transaction.*` gelmez; o kaynağın kendi olayı gelir.
 
-Bildirimi karşılayan uçta gövdeyi **ham** (`byte[]`) okuyup imzayla birlikte SDK'ya verin. İmza gövdenin bayt bayt kendisini kapsar; gövdeyi bir nesneye çevirip yeniden yazarsanız imza tutmaz.
+**Webhook nihai sonuç değildir.** Gövde yalnızca kaynağın token'ını (para hareketi varsa yanında ödemenin token'ını) taşır. Kararı, token ile geçide sorduğunuz yanıta göre verin ve yanıtı kendi kaydınızla (referans, tutar, durum) karşılaştırın. Gövdeyi **ham** (`byte[]`) okuyun; bir nesneye çevirip yeniden yazarsanız imza tutmaz.
 
 ```java
 import com.odemehub.exception.SignatureException;
+import com.odemehub.request.RetrieveOrder;
+import com.odemehub.request.RetrievePayment;
+import com.odemehub.request.RetrieveSubscription;
 
-@PostMapping("/odemehub/abonelik")
-public ResponseEntity<Void> abonelikBildirimi(
+@PostMapping("/odemehub/webhook")
+public ResponseEntity<Void> webhook(
+    HttpServletRequest request,
     @RequestBody byte[] payload,
+    @RequestHeader(value = "X-Timestamp", required = false) String timestamp,
     @RequestHeader(value = "X-Signature", required = false) String signature
 ) {
-    com.odemehub.response.SubscriptionWebhook webhook;
+    com.odemehub.response.Webhook webhook;
 
     try {
-        webhook = client.subscriptionWebhook(payload, signature);
+        webhook = client.webhook(request.getMethod(), request.getRequestURI(), payload, timestamp, signature);
     } catch (SignatureException exception) {
-        return ResponseEntity.badRequest().build();
+        return ResponseEntity.status(401).build();
     }
 
-    var subscription = webhook.getSubscription();   // sorgudakiyle aynı nesne
+    webhook.getId();      // aynı bildirim tekrar gelebilir; bununla ayıklayın
+    webhook.getEvent();   // "order.paid", "subscription.active" ...
 
-    if (webhook.isActive()) {
-        aboneligeErisimAc(subscription.getChannelReference(), subscription.getEndsAt());
-    } else if (webhook.isPastDue()) {
-        musteriyiUyar(subscription.getCheckoutUrl());
-    } else if (webhook.isCancelled()) {
-        yenilemeyiDurdur(subscription.getEndsAt());
-    } else if (webhook.isEnded()) {
-        erisimiKapat(subscription.getChannelReference());
+    if (webhook.getOrderToken() != null) {
+        var order = client.retrieveOrder(new RetrieveOrder(webhook.getOrderToken())).getOrder();
+        order.getStatus();                               // OrderStatus.PAID
+        order.getTransaction().getPaymentStatus();       // PaymentStatus.REFUNDED ...
+    } else if (webhook.getSubscriptionToken() != null) {
+        var subscription = client.retrieveSubscription(new RetrieveSubscription(webhook.getSubscriptionToken())).getSubscription();
+    } else if (webhook.getTransactionToken() != null) {   // transaction.* ve payment_link.*
+        var transaction = client.retrievePayment(new RetrievePayment(webhook.getTransactionToken())).getTransaction();
+        transaction.getPaymentLinkToken();               // linkte alınan ödemede linkin token'ı
     }
 
-    return ResponseEntity.ok().build();
+    return ResponseEntity.noContent().build();
 }
 ```
 
-Gönderilen olaylar aboneliğin **durumudur**, yapılan işlem değil:
-
-| Olay | Ne zaman gider |
-| --- | --- |
-| `active` | bir dönem ödendi (ilk ödeme ya da yenileme) |
-| `past_due` | dönem kayıtlı karttan tahsil edilemedi, müşteriden bekleniyor |
-| `cancelled` | abonelik iptal edildi; müşteri `endsAt` tarihine kadar hizmeti almaya devam eder |
-| `ended` | ödenmiş dönem doldu, abonelik kapandı |
-
-2xx dışında bir yanıt (ya da yanıtsızlık) başarısız sayılır; bildirim 5 dakika sonra bir kez daha denenir. Ulaşmayan bildirimler panelde aboneliğin sayfasında HTTP kodu ve yanıtıyla listelenir. Sipariş (`orderWebhook()`) ve 3D ödeme (`transactionWebhook()`) bildirimleri de aynı yöntemle gider; her biri kendi adresine, kendi okuyucusuyla.
+Abonelik ve link ödemelerinin iade/iptal olaylarında `getTransactionToken()` da gelir; `retrievePayment()` yanıtındaki `getOrderToken()` / `getPaymentLinkToken()` / `getSubscriptionToken()` ödemenin gerçekten o kaynağa ait olduğunu gösterir. Yalnızca doğrulamak için `client.verifyWebhook(...)` `boolean` döner. 2xx dışında bir yanıt (ya da yanıtsızlık) başarısız sayılır; geçit 60 sn, 5 dk, 15 dk ve 30 dk arayla toplam 5 kez dener ve yönlendirmeleri izlemez. Ulaşmayan bildirimler panelde ilgili kaydın sayfasında HTTP kodu ve yanıtıyla listelenir.
 
 ## Ödeme hangi hesaptan geçer
 
-`paymentProviderToken` verirseniz ödeme o hesaptan geçer; sipariş ve abonelik açarken de aynı alan vardır ve müşteri ödeme sayfasında o hesaptan öder. Vermezseniz hesabı çalışma alanınız seçer: panelde **Ödeme Ayarları → Gate (Yönlendirme)** altındaki kurallar sırayla denenir ve ödemenin karşıladığı ilk kural hesabı belirler. Kurallar kartın bankasına, şemasına, programına, tipine, ticari kart olup olmadığına, tutara ve para birimine bakabilir. Hiçbir kural tutmazsa ödeme varsayılan hesaptan geçer.
+`paymentProviderToken` verirseniz ödeme o hesaptan geçer; sipariş, ödeme linki ve abonelik açarken de aynı alan vardır ve müşteri ödeme sayfasında o hesaptan öder. Vermezseniz hesabı çalışma alanınız seçer: panelde **Ödeme Ayarları → Gate (Yönlendirme)** altındaki kurallar sırayla denenir ve ödemenin karşıladığı ilk kural hesabı belirler. Kurallar kartın bankasına, şemasına, programına, tipine, ticari kart olup olmadığına, tutara ve para birimine bakabilir. Hiçbir kural tutmazsa ödeme varsayılan hesaptan geçer.
 
 - Kuralın hesabı ödemeyi alamıyorsa (ödeme türünü ya da para birimini desteklemiyorsa) o kural atlanır.
-- Kayıtlı kartla ödeme her zaman kartın saklandığı hesaptan geçer.
+- Kayıtlı kartla ödeme her zaman kartın saklandığı hesaptan geçer; bu ödemede `paymentProviderToken` gönderilmez.
 - Taksitleri `retrieveBin()` ile gösteriyorsanız orada da hesap vermeyin: taksitler ödemenin gideceği hesaptan gelir ve çekilen tutar gösterdiğinizle aynı olur.
 
 ## Kur çevirisi
@@ -436,13 +472,13 @@ Panelde **Ödeme Ayarları → Kur Çevirici** altında bir kural tanımladıysa
 ```java
 var payment = client.regularPayment(RegularPayment.builder()
     .amount("100.00")
-    .currency("USD")
+    .currency(Currency.USD)
     // ...
     .build());
 
 if (payment.getConversion() != null) {
     payment.getConversion().getAmount();   // 4985.56
-    payment.getConversion().getCurrency(); // TRY
+    payment.getConversion().getCurrency(); // Currency.TRY
     payment.getConversion().getRate();     // 49.855560
 }
 ```
@@ -463,8 +499,8 @@ var bin = client.retrieveBin(RetrieveBin.builder().bin("54003600").amount("450.0
 if (bin.getResult().isSuccessful()) {
     bin.getIssuerName();   // Garanti Bankası
     bin.getProgram();      // Bonus
-    bin.getScheme();       // mastercard
-    bin.getType();         // credit
+    bin.getScheme();       // CardScheme.MASTERCARD
+    bin.getType();         // CardType.CREDIT
     bin.isCommercial();
 
     for (var installment : bin.getInstallments()) {
@@ -474,9 +510,7 @@ if (bin.getResult().isSuccessful()) {
 }
 ```
 
-Kartın tamamını göndermeyin; ilk 6-8 hane yeter ve yalnızca o kadarı kabul edilir.
-
-Sorgu başarısız dönebilir: kart tanınmıyor olabilir ya da hesabınızın sağlayıcısı taksit vermiyor olabilir. İki durumda da satışı durdurmayın, tek çekimle devam edin.
+Kartın tamamını göndermeyin; ilk 6-8 hane yeter ve yalnızca o kadarı kabul edilir. Sorgu başarısız dönebilir: kart tanınmıyor olabilir ya da hesabınızın sağlayıcısı taksit vermiyor olabilir. İki durumda da satışı durdurmayın, tek çekimle devam edin.
 
 ## Tutarlar ve taksit
 
@@ -485,9 +519,9 @@ Sorgu başarısız dönebilir: kart tanınmıyor olabilir ya da hesabınızın s
 | Alan | Anlamı |
 | --- | --- |
 | `amount` | **Karttan çekilecek** tutar. Vade farkı varsa içindedir. |
-| `baseAmount` | **Sattığınız** tutar, vade farkından önceki hâli. Gönderilmezse `amount` ile aynı kabul edilir. |
+| `baseAmount` | **Sattığınız** tutar, vade farkından önceki hâli. Gönderilmezse `amount` ile aynı kabul edilir; `amount`'tan büyük olamaz. |
 
-Taksit yalnızca Türk Lirası ödemelerde yapılır. USD, EUR ya da GBP ödemede `installmentNumber` `1` olmalıdır ve `retrieveBin()` taksit listesini boş döner; kur çevirisiyle TRY'den başka bir para birimine çekilen ödeme için de aynısı geçerlidir.
+Taksit 1 ile 12 arasındadır ve yalnızca Türk Lirası ödemelerde yapılır. USD, EUR ya da GBP ödemede `installmentNumber` `1` olmalıdır ve `retrieveBin()` taksit listesini boş döner; kur çevirisiyle TRY'den başka bir para birimine çekilen ödeme için de aynısı geçerlidir.
 
 Taksitsiz satışta ikisi eşittir ve `baseAmount` göndermenize gerek yoktur. Taksitli satışta `retrieveBin` size o taksidin toplamını verir; onu `amount` olarak, sattığınız tutarı `baseAmount` olarak gönderin:
 
@@ -505,32 +539,28 @@ Bazı sağlayıcılar vade farkını kendileri ekler; geçit bunu bilir ve gerek
 
 ## Kayıtlı kartlar
 
-Müşterinin kartını saklayıp sonraki ödemelerde numara sormadan çekim yapabilirsiniz.
+Müşterinin kartını saklayıp sonraki ödemelerde numara sormadan çekim yapabilirsiniz. Kart, kanal ve müşterinin sizdeki referansı altında saklanır; planınızın kayıtlı kartları kapsaması ve ödeme hesabının kart saklayabilmesi gerekir.
 
 ```java
-import com.odemehub.request.DefaultSavedCard;
+import com.odemehub.request.CreateSavedCard;
 import com.odemehub.request.DeleteSavedCard;
-import com.odemehub.request.NamedCustomer;
-import com.odemehub.request.SaveCard;
-import com.odemehub.request.SavedCards;
+import com.odemehub.request.RetrieveSavedCardsByReference;
+import com.odemehub.request.UpdateSavedCard;
 
-// Ödeme sırasında saklamak için: karta shouldSave(true) verin.
-// Ödeme olmadan saklamak için:
-var kept = client.saveCard(SaveCard.builder().customer(customer).card(card).build());
+// Ödeme sırasında saklamak için: karta shouldSave(true) verin, müşteriye referans verin.
+// Ödeme olmadan saklamak için (müşteride referans ve fatura adresinin tamamı zorunlu):
+var kept = client.createSavedCard(CreateSavedCard.builder().customer(customer).card(card).build());
+kept.getSavedCard();   // saklanamadıysa null; nedeni getResult().getMessage()
 
-var musteri = new NamedCustomer("musteri-88");
-
-// Müşterinin kartları
-var cards = client.savedCards(new SavedCards(musteri));
-
-// Varsayılan yapma / silme
+// Müşterinin kartları: varsayılan önce, sonra eskiden yeniye
+var cards = client.retrieveSavedCardsByReference(new RetrieveSavedCardsByReference("musteri-88"));
 String token = cards.getSavedCards().get(0).getToken();
 
-client.defaultSavedCard(new DefaultSavedCard(musteri, token));
-client.deleteSavedCard(new DeleteSavedCard(musteri, token));
+client.updateSavedCard(new UpdateSavedCard(token));   // varsayılan yap
+client.deleteSavedCard(new DeleteSavedCard(token));   // sağlayıcıdan ve geçitten sil
 ```
 
-Kayıtlı kartla ödeme alırken `card` yerine kartın token'ını verin:
+Kayıtlı kartla ödeme alırken `card` yerine kartın token'ını verin; müşterinin referansı kartın saklandığı referansla aynı olmalıdır:
 
 ```java
 var payment = client.regularPayment(RegularPayment.builder()
@@ -543,9 +573,9 @@ var payment = client.regularPayment(RegularPayment.builder()
     .build());
 ```
 
-`card` ile `savedCardToken` birlikte ya da hiçbiri verilmezse `build()` `IllegalArgumentException` fırlatır.
+`card` ile `savedCardToken` birlikte gönderilmez; ikisi birden ya da hiçbiri verilirse geçit isteği reddeder.
 
-Kart saklayan bir ödemenin yanıtında `payment.getSavedCard()` dolu gelir; kartın token'ını oradan öğrenirsiniz. Kart her yerde token ile adlandırılır.
+Kart saklayan bir ödemenin yanıtında `payment.getSavedCard()` dolu gelir; kartın token'ını oradan öğrenirsiniz. Kart her yerde token ile adlandırılır; yanıtlardaki `getCustomer().getReference()` kartın kimin için saklandığını söyler.
 
 ## İade ve iptal
 
@@ -554,24 +584,46 @@ import com.odemehub.request.CancelPayment;
 import com.odemehub.request.RefundPayment;
 
 // Gün sonu almamış ödemenin tamamını geri alır
-client.cancelPayment(new CancelPayment(payment.getTransactionToken()));
+client.cancelPayment(new CancelPayment(payment.getTransaction().getToken()));
 
 // Tutar verilirse kısmi, verilmezse kalanın tamamı iade edilir.
 // Kur çevirisiyle çekilen ödemede tutar çekilen para birimindedir.
-client.refundPayment(new RefundPayment(payment.getTransactionToken(), "100.00"));
+var refund = client.refundPayment(new RefundPayment(payment.getTransaction().getToken(), "100.00"));
+refund.getRefund().getType();     // RefundType.REFUND
+refund.getRefund().getAmount();   // 100.00
+refund.getTransaction().getPaymentStatus();   // PaymentStatus.PARTIALLY_REFUNDED
 ```
+
+## 2.0.0'daki kırıcı değişiklikler
+
+2.0.0, SDK'yı geçidin bugünkü API'siyle ve diğer ödemehub SDK'larıyla aynı biçime getirir. 1.x'ten geçerken:
+
+- **Kaldırılan uçlar:** `orderPayment`, `subscriptionPayment`, `saveProduct`, `cancelSubscription`, `retrieveTransactions`, `saveCard`, `savedCards`, `defaultSavedCard`. Yerlerine: `createOrder`, `createSubscription`, kalemlerin isteğin içinde gönderilmesi (ürün kataloğu yok), `updateSubscription(...status(SubscriptionStatus.CANCELLED))`, `retrievePaymentsByChannelReference` / `retrievePaymentByReference`, `createSavedCard`, `retrieveSavedCardsByReference`, `updateSavedCard`.
+- **Yeni uçlar:** ödeme linki uçları, bütün `update-*`, `*-by-reference` ve `*-by-channel-reference` uçları; tek kaydı token'la soran uçlar artık `GET`'tir.
+- **Müşteri:** `Customer` artık `reference` + `billingAddress` + `shippingAddress` (`Address`) taşır; `channelReference`, düz adres alanları ve `TaxDetails` kalktı (şirket alanları fatura adresinde).
+- **Kalemler:** `OrderItem` / `SubscriptionItem` yerine ad, fiyat, adet ve KDV oranı zorunlu tek `Item`; gönderim yöntemleri için `ShippingMethod`.
+- **Token parametresi:** tek kaydı adlandıran her istek parametresi `token`'dır (`new RefundPayment(token)`, `UpdateOrder.builder(token)`).
+- **Yanıtlar iç içe:** ödeme bilgisi `payment.getTransaction()` altında (`getTransactionToken()`, `getChannelReference()` gibi düz kısayollar kalktı); iade `getRefund()` altında; `OrderDetails` / `SubscriptionDetails` müşteriyi hem üstte hem varlığın kendisinde taşır; ödeme linkinin işlemleri `PaymentLinkDetails` üzerindedir.
+- **Enum'lar:** para birimi, dönem, durumlar, güvenlik tipi, iade tipi, kart şeması ve tipi `String` yerine `com.odemehub.enums` enum'larıdır; istekler de enum alır (`currency(Currency.TRY)`).
+- **İmza:** imza artık an, metot, yol ve gövdeyi kapsar ve `X-Timestamp` başlığıyla gider (aşağıda).
+- **Hatalar:** `NotFoundException` (404; bulunamayan kayıt artık 422 değil), `ForbiddenException` (403), `RateLimitException` (429) eklendi.
+- **İstemci tarafı denetim yok:** kart ile kayıtlı kartın birlikte verilmesi artık `build()`'de değil, geçitte reddedilir.
+- **Webhook:** `orderWebhook()`, `subscriptionWebhook()`, `transactionWebhook()` yerine tek `webhook(method, path, body, timestamp, signature)` (ve `verifyWebhook()`); imza istek ve yanıtlarla aynı şemadadır. Gövde yalnızca token taşır (`getOrderToken()`, `getPaymentLinkToken()`, `getSubscriptionToken()`, `getTransactionToken()`); durum `retrieve*()` ile sorulur. Adresler panelde tanımlandığı için `SecurePayment`, `CreateOrder`, `UpdateOrder`, `CreateSubscription`, `UpdateSubscription` builder'larında `webhookUrl(...)` yok. `Signature`'ın yalnız gövdeyi imzalayan `sign(body)` / `verify(body, signature)` metotları kalktı.
 
 ## Hatalar
 
 Bütün hatalar `com.odemehub.exception.OdemehubException`'dan türer ve denetimsizdir (`RuntimeException`); tek bir `catch` hepsini yakalar.
 
-| Hata | Ne demek |
-| --- | --- |
-| `ValidationException` | Gönderdiğiniz alanlar kabul edilmedi. Ödeme denenmedi. `getErrors()` alan alan söyler. |
-| `AuthenticationException` | API anahtarı bu takıma ait değil ya da imza gizli anahtarla tutmuyor. |
-| `SignatureException` | Gelen yanıtın ya da bildirimin imzası tutmadı. Geçitten geldiği kanıtlanamaz; **işleme almayın**. |
-| `TransportException` | Geçide ulaşılamadı ya da yanıt okunamadı. Ödemenin ne olduğu belirsizdir; geçitteki kayıt asıl doğruyu söyler. |
-| `UnexpectedResponseException` | Beklenmeyen bir yanıt geldi. `getStatus()` HTTP kodunu verir. |
+| Hata | HTTP | Ne demek |
+| --- | --- | --- |
+| `ValidationException` | 422 | Gönderdiğiniz alanlar kabul edilmedi. Ödeme denenmedi. `getErrors()` alan alan söyler. |
+| `NotFoundException` | 404 | Token ya da referansın adlandırdığı kayıt çalışma alanınızda yok. |
+| `AuthenticationException` | 401 | API anahtarı bu çalışma alanına ait değil, imza gizli anahtarla tutmuyor ya da saatiniz kaymış. |
+| `ForbiddenException` | 403 | Çalışma alanınız şu an işlem yapamıyor ya da planınız / modülleriniz bu ucu kapsamıyor. |
+| `RateLimitException` | 429 | Çok sık istek. `getRetryAfter()` kaç saniye beklemeniz gerektiğini söyler. |
+| `SignatureException` | — | Gelen yanıtın ya da bildirimin imzası tutmadı. Geçitten geldiği kanıtlanamaz; **işleme almayın**. |
+| `TransportException` | — | Geçide ulaşılamadı ya da yanıt okunamadı. Ödemenin ne olduğu belirsizdir; geçitteki kayıt asıl doğruyu söyler. |
+| `UnexpectedResponseException` | diğer | Beklenmeyen bir yanıt geldi (ör. 500). `getStatus()` HTTP kodunu verir. |
 
 ```java
 import com.odemehub.exception.OdemehubException;
@@ -586,17 +638,23 @@ try {
 }
 ```
 
-Ağ hatasında ödemeyi körlemesine tekrarlamayın: `TransportException` "olmadı" demek değil, "bilmiyorum" demektir.
+Ağ hatasında ödemeyi körlemesine tekrarlamayın: `TransportException` "olmadı" demek değil, "bilmiyorum" demektir. Önce `retrievePaymentByReference()` ile sorun.
 
 ## İmzayı elle doğrulamak
 
-İmza, gövdenin tam metninin gizli anahtarla HMAC-SHA256'sıdır, küçük harf hex olarak yazılır. SDK bunu `com.odemehub.Signature` sınıfıyla yapar:
+Her istek, yanıt ve webhook iki başlık taşır: imzalandığı an (`X-Timestamp`, Unix saniyesi) ve imza (`X-Signature`). İmza; an, HTTP metodu, yol ve gövdenin tam metninin satır sonuyla birleştirilip gizli anahtarla alınmış HMAC-SHA256'sıdır, küçük harf hex olarak yazılır:
 
-```java
-new Signature(apiSecret).sign(body);
+```
+HMAC-SHA256(apiSecret, "{timestamp}\n{METHOD}\n{path}\n{body}")
 ```
 
-Test vektörü: `secret_test` anahtarıyla `{"a":1}` gövdesinin imzası `6d0c951564cdd2b6b70e75b214293a8cd2542815ba54fe91c7f6ce105bc3d592`'dir.
+Yol, adresteki baştaki `/` dahil ve sorgu dizgisi hariç yoldur (`/api/{takım}/gateway/{uç}`); GET isteğinde gövde boş metindir. Beş dakikadan eski imza kabul edilmez. SDK bunu `com.odemehub.Signature` sınıfıyla yapar:
+
+```java
+new Signature(apiSecret).sign("POST", "/api/1000000001/gateway/regular-payment", body, timestamp);
+```
+
+Test vektörü: `secret_test` anahtarıyla, `1700000000` anında, `POST` `/api/1000000001/gateway/regular-payment` yoluna `{"a":1}` gövdesinin imzası `4d6225c9dd46837418b40dd8140d76a24cd7520d81ff3b280bf98da8da6a8771`'dir.
 
 ## Geliştirme
 

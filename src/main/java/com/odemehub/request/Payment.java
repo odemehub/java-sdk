@@ -1,5 +1,6 @@
 package com.odemehub.request;
 
+import com.odemehub.enums.Currency;
 import java.util.Map;
 
 /**
@@ -7,8 +8,9 @@ import java.util.Map;
  * lives here; the endpoint it is sent to is what tells the kinds apart.
  *
  * <p>A payment is made with a card the customer typed in or with one they
- * let the merchant keep, never with both: naming a kept card and a card at
- * once is turned down by the gateway, so it is turned down here first.
+ * let the merchant keep, never with both. With a kept card the payment goes
+ * through the account the card is kept at, so no account is named either;
+ * the gateway turns down a payment that names both.
  */
 public abstract class Payment extends ChannelMessage {
 
@@ -19,7 +21,7 @@ public abstract class Payment extends ChannelMessage {
     private final Customer customer;
     private final Card card;
     private final String savedCardToken;
-    private final String currency;
+    private final Currency currency;
     private final String paymentProviderToken;
     private final String baseAmount;
 
@@ -35,10 +37,6 @@ public abstract class Payment extends ChannelMessage {
         this.currency = builder.currency;
         this.paymentProviderToken = builder.paymentProviderToken;
         this.baseAmount = builder.baseAmount;
-
-        if ((card == null) == (savedCardToken == null)) {
-            throw new IllegalArgumentException("Bir ödeme ya bir kartla ya da kayıtlı bir kartla yapılır; ikisi birden ya da hiçbiri verilemez.");
-        }
     }
 
     /**
@@ -54,7 +52,7 @@ public abstract class Payment extends ChannelMessage {
                 "payment_provider_token", paymentProviderToken,
                 "amount", amount,
                 "base_amount", baseAmount,
-                "currency", currency,
+                "currency", currency == null ? null : currency.getValue(),
                 "installment_number", installmentNumber,
                 "ip", ip,
                 "saved_card_token", savedCardToken
@@ -78,7 +76,7 @@ public abstract class Payment extends ChannelMessage {
         private Customer customer;
         private Card card;
         private String savedCardToken;
-        private String currency;
+        private Currency currency;
         private String paymentProviderToken;
         private String baseAmount;
 
@@ -103,6 +101,7 @@ public abstract class Payment extends ChannelMessage {
             return self();
         }
 
+        /** 1 to 12. More than one only when the payment is asked for and charged in lira. */
         public B installmentNumber(int installmentNumber) {
             this.installmentNumber = installmentNumber;
             return self();
@@ -114,6 +113,11 @@ public abstract class Payment extends ChannelMessage {
             return self();
         }
 
+        /**
+         * Who is paying: the reference, if there is one, and the whole billing
+         * address. A payment that keeps its card, or pays with a kept one,
+         * needs the reference.
+         */
         public B customer(Customer customer) {
             this.customer = customer;
             return self();
@@ -131,8 +135,8 @@ public abstract class Payment extends ChannelMessage {
             return self();
         }
 
-        /** Three letters, e.g. TRY. Left out, the gateway takes the lira. */
-        public B currency(String currency) {
+        /** Left out, the gateway takes the lira. */
+        public B currency(Currency currency) {
             this.currency = currency;
             return self();
         }
@@ -140,8 +144,9 @@ public abstract class Payment extends ChannelMessage {
         /**
          * The payment account to charge through. Left out, the team's routing
          * rules pick the account, and the team's default account is used when
-         * none of them holds. A payment with a kept card always goes through
-         * the account the card is kept at.
+         * none of them holds. Never named together with a kept card: a
+         * payment with a kept card always goes through the account the card
+         * is kept at.
          */
         public B paymentProviderToken(String paymentProviderToken) {
             this.paymentProviderToken = paymentProviderToken;
@@ -151,7 +156,8 @@ public abstract class Payment extends ChannelMessage {
         /**
          * What is being sold, where the customer spreads the amount over
          * months and the bank takes something for the waiting on top of it.
-         * Left out where the two are the same, which is most payments.
+         * Never more than the amount. Left out where the two are the same,
+         * which is most payments.
          */
         public B baseAmount(String baseAmount) {
             this.baseAmount = baseAmount;

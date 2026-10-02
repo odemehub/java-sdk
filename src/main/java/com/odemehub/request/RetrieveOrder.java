@@ -1,31 +1,18 @@
 package com.odemehub.request;
 
-import java.util.Map;
-
 /**
- * Where an order stands: what it is for, whether it has been paid and, if
- * so, by which payment. The order is named by the token the gateway gave it
- * when it was opened, which is all a merchant holds of an order whose
- * customer never came back from the checkout. Nothing is changed by asking.
+ * Where an order stands: what it is for, what it comes to, whether it has
+ * been paid and, if so, by which payment, and whose it is. The one call a
+ * merchant holding nothing but the order's token can make.
  */
-public final class RetrieveOrder extends Message {
+public final class RetrieveOrder extends RetrieveByToken {
 
-    private final String orderToken;
-
-    /**
-     * @param orderToken The order's token in the gateway, as it answered when it was opened.
-     */
-    public RetrieveOrder(String orderToken) {
-        this.orderToken = Fields.required(orderToken, "orderToken");
+    public RetrieveOrder(String token) {
+        super(token);
     }
 
     @Override
-    public String path() {
+    protected String endpoint() {
         return "retrieve-order";
-    }
-
-    @Override
-    public Map<String, Object> toBody(String channelToken) {
-        return Fields.of("order", Fields.of("token", orderToken));
     }
 }

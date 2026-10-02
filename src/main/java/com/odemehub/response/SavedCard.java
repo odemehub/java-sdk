@@ -1,6 +1,7 @@
 package com.odemehub.response;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.odemehub.enums.CardScheme;
 
 /**
  * A card a customer let the merchant keep.
@@ -10,7 +11,7 @@ public final class SavedCard {
     private final String token;
     private final String paymentProviderToken;
     private final String holderName;
-    private final String scheme;
+    private final CardScheme scheme;
     private final String firstDigits;
     private final String lastFourDigit;
     private final String expiryMonth;
@@ -22,7 +23,7 @@ public final class SavedCard {
         this.token = Read.string(card.path("token"));
         this.paymentProviderToken = Read.optionalString(card.path("payment_provider_token"));
         this.holderName = Read.string(card.path("holder_name"));
-        this.scheme = Read.optionalString(card.path("scheme"));
+        this.scheme = CardScheme.from(Read.optionalString(card.path("scheme")));
         this.firstDigits = Read.string(card.path("first_digits"));
         this.lastFourDigit = Read.string(card.path("last_four_digit"));
         this.expiryMonth = Read.string(card.path("expiry_month"));
@@ -56,8 +57,8 @@ public final class SavedCard {
         return holderName;
     }
 
-    /** The network the card belongs to, e.g. visa, as far as it is known. */
-    public String getScheme() {
+    /** The network the card belongs to, as far as it is known; null otherwise. */
+    public CardScheme getScheme() {
         return scheme;
     }
 

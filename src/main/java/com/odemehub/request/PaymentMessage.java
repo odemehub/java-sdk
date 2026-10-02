@@ -10,17 +10,17 @@ import java.util.Map;
  */
 public abstract class PaymentMessage extends Message {
 
-    private final String transactionToken;
+    private final String token;
 
     /**
-     * @param transactionToken The payment's token in the gateway, as it answered when the payment was made.
+     * @param token The payment's token in the gateway, as it answered when the payment was made.
      */
-    protected PaymentMessage(String transactionToken) {
-        this.transactionToken = Fields.required(transactionToken, "transactionToken");
+    protected PaymentMessage(String token) {
+        this.token = Fields.required(token, "token");
     }
 
     @Override
     public Map<String, Object> toBody(String channelToken) {
-        return Fields.of("transaction", Fields.of("token", transactionToken));
+        return Fields.of("transaction", Fields.of("token", token));
     }
 }

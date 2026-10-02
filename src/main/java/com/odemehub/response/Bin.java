@@ -1,6 +1,8 @@
 package com.odemehub.response;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.odemehub.enums.CardScheme;
+import com.odemehub.enums.CardType;
 import java.util.List;
 
 /**
@@ -13,8 +15,8 @@ public final class Bin {
     private final String bin;
     private final String issuerName;
     private final String issuerCode;
-    private final String scheme;
-    private final String type;
+    private final CardScheme scheme;
+    private final CardType type;
     private final String program;
     private final Boolean isCommercial;
     private final List<Installment> installments;
@@ -26,8 +28,8 @@ public final class Bin {
         this.bin = Read.string(card.path("bin"));
         this.issuerName = Read.optionalString(card.path("issuer_name"));
         this.issuerCode = Read.optionalString(card.path("issuer_code"));
-        this.scheme = Read.optionalString(card.path("scheme"));
-        this.type = Read.optionalString(card.path("type"));
+        this.scheme = CardScheme.from(Read.optionalString(card.path("scheme")));
+        this.type = CardType.from(Read.optionalString(card.path("type")));
         this.program = Read.optionalString(card.path("program"));
         this.isCommercial = Read.optionalBool(card.path("is_commercial"));
         this.installments = Read.list(body.path("installments"), Installment::fromBody);
@@ -55,13 +57,13 @@ public final class Bin {
         return issuerCode;
     }
 
-    /** The scheme the card is issued on, e.g. visa, as the issuer reports it. */
-    public String getScheme() {
+    /** The scheme the card is issued on, as the issuer reports it; null when it is not known. */
+    public CardScheme getScheme() {
         return scheme;
     }
 
-    /** Whether the money is lent, drawn from an account or loaded beforehand: credit, debit or prepaid. */
-    public String getType() {
+    /** Whether the money is lent, drawn from an account or loaded beforehand; null when it is not known. */
+    public CardType getType() {
         return type;
     }
 

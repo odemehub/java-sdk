@@ -3,7 +3,7 @@ package com.odemehub.request;
 import java.util.Map;
 
 /**
- * The card a payment is attempted with. The number and the security code
+ * The card a payment is attempted with, or kept without one. The number and the security code
  * travel no further than the request body, and are kept out of
  * {@link #toString()} so they never reach a log: the gateway keeps only the
  * head and the tail digits of the number and no digit of the code.
@@ -15,7 +15,7 @@ public final class Card {
     private final String securityCode;
     private final String expiryMonth;
     private final String expiryYear;
-    private final boolean shouldSave;
+    private final Boolean shouldSave;
 
     private Card(Builder builder) {
         this.holderName = Fields.required(builder.holderName, "holderName");
@@ -54,7 +54,7 @@ public final class Card {
         private String securityCode;
         private String expiryMonth;
         private String expiryYear;
-        private boolean shouldSave;
+        private Boolean shouldSave;
 
         private Builder() {
         }
@@ -64,15 +64,18 @@ public final class Card {
             return this;
         }
 
-        /** The number, digits only, without spaces. */
+        /** The number, 12 to 19 digits; spaces between the groups are taken out by the gateway. */
         public Builder number(String number) {
             this.number = number;
             return this;
         }
 
         /**
-         * The security code. Only a card kept with {@code saveCard()} at a
-         * provider with a card store of its own may leave it out.
+         * The security code, three or four digits. A payment with a card typed
+         * in always needs it. A card kept without a payment
+         * ({@code createSavedCard()}) needs it only at providers that keep a
+         * card by charging and giving back a small amount; left out, it is not
+         * sent.
          */
         public Builder securityCode(String securityCode) {
             this.securityCode = securityCode;
@@ -92,10 +95,12 @@ public final class Card {
         }
 
         /**
-         * Whether the customer asked for this card to be kept, so they can pay
-         * with it again without typing it out. The account's provider has to be
-         * able to charge a kept card; one that cannot turns the payment down on
-         * this field rather than declining it.
+         * Whether the customer asked for this card to be kept after a
+         * successful payment, so they can pay with it again without typing it
+         * out. Needs a customer reference to keep it under, a plan that covers
+         * saved cards and an account whose provider keeps cards; the gateway
+         * turns the payment down on this field otherwise. Read only for
+         * payments; left out, it is not sent.
          */
         public Builder shouldSave(boolean shouldSave) {
             this.shouldSave = shouldSave;

@@ -1,5 +1,6 @@
 package com.odemehub.request;
 
+import com.odemehub.enums.Currency;
 import java.util.Map;
 
 /**
@@ -16,7 +17,7 @@ public final class RetrieveBin extends Message {
     private final String bin;
     private final String amount;
     private final String paymentProviderToken;
-    private final String currency;
+    private final Currency currency;
 
     private RetrieveBin(Builder builder) {
         this.bin = Fields.required(builder.bin, "bin");
@@ -44,7 +45,7 @@ public final class RetrieveBin extends Message {
             "transaction", Fields.said(
                 "payment_provider_token", paymentProviderToken,
                 "amount", amount,
-                "currency", currency
+                "currency", currency == null ? null : currency.getValue()
             ),
             "card", Fields.of("bin", bin)
         );
@@ -55,7 +56,7 @@ public final class RetrieveBin extends Message {
         private String bin;
         private String amount;
         private String paymentProviderToken;
-        private String currency;
+        private Currency currency;
 
         private Builder() {
         }
@@ -88,7 +89,7 @@ public final class RetrieveBin extends Message {
         }
 
         /** The money the payment is taken in; the lira unless another is named. */
-        public Builder currency(String currency) {
+        public Builder currency(Currency currency) {
             this.currency = currency;
             return this;
         }

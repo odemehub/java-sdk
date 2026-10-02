@@ -54,6 +54,17 @@ final class Read {
         return value.size() > 0;
     }
 
+    static Integer optionalInteger(JsonNode value) {
+        return said(value) ? integer(value) : null;
+    }
+
+    /**
+     * The object an answer carries under a key, or null when it carries none.
+     */
+    static JsonNode object(JsonNode value) {
+        return value != null && value.isObject() ? value : null;
+    }
+
     static Boolean optionalBool(JsonNode value) {
         return said(value) ? bool(value) : null;
     }
