@@ -12,9 +12,9 @@ import java.util.Map;
  * through the account the card is kept at, so no account is named either;
  * the gateway turns down a payment that names both.
  */
-public abstract class Payment extends ChannelMessage {
+public abstract class Payment extends Message {
 
-    private final String channelReference;
+    private final String reference;
     private final String amount;
     private final int installmentNumber;
     private final String ip;
@@ -26,8 +26,7 @@ public abstract class Payment extends ChannelMessage {
     private final String baseAmount;
 
     protected Payment(Builder<?> builder) {
-        super(builder.channelToken);
-        this.channelReference = Fields.required(builder.channelReference, "channelReference");
+        this.reference = Fields.required(builder.reference, "reference");
         this.amount = Fields.required(builder.amount, "amount");
         this.installmentNumber = Fields.required(builder.installmentNumber, "installmentNumber");
         this.ip = Fields.required(builder.ip, "ip");
@@ -44,11 +43,10 @@ public abstract class Payment extends ChannelMessage {
      * body as a whole and sends the signature in a header of its own.
      */
     @Override
-    public Map<String, Object> toBody(String channelToken) {
+    public Map<String, Object> toBody() {
         Map<String, Object> body = Fields.of(
             "transaction", Fields.said(
-                "channel_token", channel(channelToken),
-                "channel_reference", channelReference,
+                "reference", reference,
                 "payment_provider_token", paymentProviderToken,
                 "amount", amount,
                 "base_amount", baseAmount,
@@ -67,9 +65,8 @@ public abstract class Payment extends ChannelMessage {
         return body;
     }
 
-    public abstract static class Builder<B extends Builder<B>> extends ChannelMessage.Builder<B> {
-
-        private String channelReference;
+    public abstract static class Builder<B extends Builder<B>> {
+        private String reference;
         private String amount;
         private Integer installmentNumber;
         private String ip;
@@ -80,14 +77,16 @@ public abstract class Payment extends ChannelMessage {
         private String paymentProviderToken;
         private String baseAmount;
 
+        protected abstract B self();
+
         /**
          * The reference the payment is known by in the calling system, such as
          * SIP-10231. It has to carry at least one digit: its digits end the
          * order number the bank is sent, so the payment can be found in the
          * bank's panel by it.
          */
-        public B channelReference(String channelReference) {
-            this.channelReference = channelReference;
+        public B reference(String reference) {
+            this.reference = reference;
             return self();
         }
 

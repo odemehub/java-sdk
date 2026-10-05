@@ -16,8 +16,7 @@ import java.util.List;
 public final class Subscription {
 
     private final String token;
-    private final String channelToken;
-    private final String channelReference;
+    private final String reference;
     private final String description;
     private final String paymentProviderToken;
     private final SubscriptionStatus status;
@@ -25,7 +24,6 @@ public final class Subscription {
     private final Integer renewalLimit;
     private final int renewalsPaid;
     private final List<Item> items;
-    private final List<ShippingMethod> shippingMethods;
     private final ShippingMethod shippingMethod;
     private final String subtotal;
     private final String shippingAmount;
@@ -42,8 +40,7 @@ public final class Subscription {
 
     private Subscription(JsonNode subscription, JsonNode customer) {
         this.token = Read.string(subscription.path("token"));
-        this.channelToken = Read.string(subscription.path("channel_token"));
-        this.channelReference = Read.string(subscription.path("channel_reference"));
+        this.reference = Read.string(subscription.path("reference"));
         this.description = Read.nonEmptyString(subscription.path("description"));
         this.paymentProviderToken = Read.nonEmptyString(subscription.path("payment_provider_token"));
         this.status = SubscriptionStatus.from(Read.optionalString(subscription.path("status")));
@@ -51,7 +48,6 @@ public final class Subscription {
         this.renewalLimit = Read.optionalInteger(subscription.path("renewal_limit"));
         this.renewalsPaid = Read.integer(subscription.path("renewals_paid"));
         this.items = Read.list(subscription.path("items"), Item::fromBody);
-        this.shippingMethods = Read.list(subscription.path("shipping_methods"), ShippingMethod::fromBody);
         this.shippingMethod = ShippingMethod.in(subscription.path("shipping_method"));
         this.subtotal = Read.string(subscription.path("subtotal"));
         this.shippingAmount = Read.string(subscription.path("shipping_amount"));
@@ -112,14 +108,10 @@ public final class Subscription {
         return token;
     }
 
-    /** The channel the subscription was opened on. */
-    public String getChannelToken() {
-        return channelToken;
-    }
 
     /** The key the subscription is known by in the calling system. */
-    public String getChannelReference() {
-        return channelReference;
+    public String getReference() {
+        return reference;
     }
 
     public String getDescription() {
@@ -156,10 +148,6 @@ public final class Subscription {
         return items;
     }
 
-    /** The ways the goods may be sent. */
-    public List<ShippingMethod> getShippingMethods() {
-        return shippingMethods;
-    }
 
     /** The way the payer picked; null until they have, or when none was offered. */
     public ShippingMethod getShippingMethod() {
@@ -227,6 +215,6 @@ public final class Subscription {
 
     @Override
     public String toString() {
-        return "Subscription[token=" + token + ", channelReference=" + channelReference + ", status=" + status + ", period=" + period + ", amount=" + amount + ", currency=" + currency + ", nextPaymentAt=" + nextPaymentAt + ", checkoutUrl=" + checkoutUrl + "]";
+        return "Subscription[token=" + token + ", reference=" + reference + ", status=" + status + ", period=" + period + ", amount=" + amount + ", currency=" + currency + ", nextPaymentAt=" + nextPaymentAt + ", checkoutUrl=" + checkoutUrl + "]";
     }
 }

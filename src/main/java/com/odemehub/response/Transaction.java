@@ -16,8 +16,7 @@ import com.odemehub.enums.TransactionStatus;
 public final class Transaction {
 
     private final String token;
-    private final String channelToken;
-    private final String channelReference;
+    private final String reference;
     private final TransactionStatus status;
     private final PaymentStatus paymentStatus;
     private final SecurityType securityType;
@@ -34,11 +33,11 @@ public final class Transaction {
     private final String orderToken;
     private final String paymentLinkToken;
     private final String subscriptionToken;
+    private final SavedCard savedCard;
 
     private Transaction(JsonNode transaction) {
         this.token = Read.string(transaction.path("token"));
-        this.channelToken = Read.string(transaction.path("channel_token"));
-        this.channelReference = Read.string(transaction.path("channel_reference"));
+        this.reference = Read.string(transaction.path("reference"));
         this.status = TransactionStatus.from(Read.optionalString(transaction.path("status")));
         this.paymentStatus = PaymentStatus.from(Read.optionalString(transaction.path("payment_status")));
         this.securityType = SecurityType.from(Read.optionalString(transaction.path("security_type")));
@@ -55,6 +54,7 @@ public final class Transaction {
         this.orderToken = Read.nonEmptyString(transaction.path("order").path("token"));
         this.paymentLinkToken = Read.nonEmptyString(transaction.path("payment_link").path("token"));
         this.subscriptionToken = Read.nonEmptyString(transaction.path("subscription").path("token"));
+        this.savedCard = SavedCard.in(transaction.path("saved_card"));
     }
 
     public static Transaction fromBody(JsonNode transaction) {
@@ -76,14 +76,10 @@ public final class Transaction {
         return token;
     }
 
-    /** The channel the payment came in on. */
-    public String getChannelToken() {
-        return channelToken;
-    }
 
     /** The reference the payment was made under in the calling system. */
-    public String getChannelReference() {
-        return channelReference;
+    public String getReference() {
+        return reference;
     }
 
     /** The attempt's state; null for a state this version does not know. */
@@ -164,8 +160,13 @@ public final class Transaction {
         return subscriptionToken;
     }
 
+    /** The card the payment kept, when it asked to keep one and went through; null otherwise. */
+    public SavedCard getSavedCard() {
+        return savedCard;
+    }
+
     @Override
     public String toString() {
-        return "Transaction[token=" + token + ", channelReference=" + channelReference + ", status=" + status + ", paymentStatus=" + paymentStatus + ", amount=" + amount + ", currency=" + currency + ", errorMessage=" + errorMessage + "]";
+        return "Transaction[token=" + token + ", reference=" + reference + ", status=" + status + ", paymentStatus=" + paymentStatus + ", amount=" + amount + ", currency=" + currency + ", errorMessage=" + errorMessage + "]";
     }
 }

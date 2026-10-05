@@ -10,29 +10,26 @@ import java.util.Map;
  * names no customer; whoever pays says who they are on the page. The answer
  * carries the checkout address, which is the link itself.
  *
- * <p>Opening is idempotent per channel reference: opening again under a
+ * <p>Opening is idempotent per reference: opening again under a
  * reference that already has a link overwrites that link with what is sent
  * and answers with it, under its own token. Only a link with a payment under
  * way is left alone. A link opened without a reference is given one.
- *
- * <p>Give {@link ChannelMessage#ODEMEHUB_CHANNEL} as the channel to open the
- * link on the team's own ödemehub channel, where the panel opens its links.
+
  */
-public final class CreatePaymentLink extends ChannelMessage {
+public final class CreatePaymentLink extends Message {
 
     private final List<Item> items;
     private final Currency currency;
-    private final String channelReference;
+    private final String reference;
     private final String description;
     private final String paymentProviderToken;
     private final String expiresAt;
     private final Boolean isActive;
 
     private CreatePaymentLink(Builder builder) {
-        super(builder.channelToken);
         this.items = List.copyOf(Fields.required(builder.items, "items"));
         this.currency = Fields.required(builder.currency, "currency");
-        this.channelReference = builder.channelReference;
+        this.reference = builder.reference;
         this.description = builder.description;
         this.paymentProviderToken = builder.paymentProviderToken;
         this.expiresAt = builder.expiresAt;
@@ -49,11 +46,10 @@ public final class CreatePaymentLink extends ChannelMessage {
     }
 
     @Override
-    public Map<String, Object> toBody(String channelToken) {
+    public Map<String, Object> toBody() {
         return Fields.of(
             "payment_link", Fields.said(
-                "channel_token", linkChannel(channelToken),
-                "channel_reference", channelReference,
+                "reference", reference,
                 "description", description,
                 "payment_provider_token", paymentProviderToken,
                 "currency", currency.getValue(),
@@ -64,11 +60,11 @@ public final class CreatePaymentLink extends ChannelMessage {
         );
     }
 
-    public static final class Builder extends ChannelMessage.Builder<Builder> {
+    public static final class Builder {
 
         private List<Item> items;
         private Currency currency;
-        private String channelReference;
+        private String reference;
         private String description;
         private String paymentProviderToken;
         private String expiresAt;
@@ -89,8 +85,8 @@ public final class CreatePaymentLink extends ChannelMessage {
         }
 
         /** The reference the link is known by in the calling system. It has to carry at least one digit. Left out, the gateway makes one up. */
-        public Builder channelReference(String channelReference) {
-            this.channelReference = channelReference;
+        public Builder reference(String reference) {
+            this.reference = reference;
             return this;
         }
 
@@ -114,11 +110,6 @@ public final class CreatePaymentLink extends ChannelMessage {
         /** Whether the link takes payments. Left out, it does. */
         public Builder isActive(boolean isActive) {
             this.isActive = isActive;
-            return this;
-        }
-
-        @Override
-        protected Builder self() {
             return this;
         }
 

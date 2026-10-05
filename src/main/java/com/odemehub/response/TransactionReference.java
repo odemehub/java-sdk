@@ -10,14 +10,12 @@ import com.odemehub.enums.PaymentStatus;
 public final class TransactionReference {
 
     private final String token;
-    private final String channelToken;
-    private final String channelReference;
+    private final String reference;
     private final PaymentStatus paymentStatus;
 
     private TransactionReference(JsonNode transaction) {
         this.token = Read.string(transaction.path("token"));
-        this.channelToken = Read.string(transaction.path("channel_token"));
-        this.channelReference = Read.string(transaction.path("channel_reference"));
+        this.reference = Read.string(transaction.path("reference"));
         this.paymentStatus = PaymentStatus.from(Read.optionalString(transaction.path("payment_status")));
     }
 
@@ -30,14 +28,10 @@ public final class TransactionReference {
         return token;
     }
 
-    /** The channel the payment came in on. */
-    public String getChannelToken() {
-        return channelToken;
-    }
 
     /** The reference the payment was made under. */
-    public String getChannelReference() {
-        return channelReference;
+    public String getReference() {
+        return reference;
     }
 
     /** What became of the money: paid, cancelled, refunded, partially refunded; null for a value this version does not know. */
@@ -47,6 +41,6 @@ public final class TransactionReference {
 
     @Override
     public String toString() {
-        return "TransactionReference[token=" + token + ", channelToken=" + channelToken + ", channelReference=" + channelReference + ", paymentStatus=" + paymentStatus + "]";
+        return "TransactionReference[token=" + token + ", reference=" + reference + ", paymentStatus=" + paymentStatus + "]";
     }
 }

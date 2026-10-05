@@ -40,7 +40,7 @@ public final class RetrieveBin extends Message {
      * sent empty, so the gateway fills it in itself.
      */
     @Override
-    public Map<String, Object> toBody(String channelToken) {
+    public Map<String, Object> toBody() {
         return Fields.of(
             "transaction", Fields.said(
                 "payment_provider_token", paymentProviderToken,

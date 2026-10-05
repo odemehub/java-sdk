@@ -7,11 +7,12 @@ import java.util.Map;
  * for, or a card is kept for: the merchant's own key for them, where they
  * are billed and, for goods, where the goods go.
  *
- * <p>The reference is what a kept card is held under, together with the
- * channel: a payment that keeps its card, a card kept on its own and a
- * subscription all need it, and a payment with a kept card names the same
- * reference the card was kept with. An order or a subscription opened without
- * one is given a {@code guest-} reference by the gateway once somebody pays.
+ * <p>The reference is what makes them one of the team's customers: the
+ * customer is written under it once a payment for them goes through, and
+ * their cards are kept for them and found again by it. It may be left out of
+ * a payment or an order, and the payer is then nobody the team keeps; but a
+ * payment that keeps its card, a card kept on its own and a subscription
+ * have to carry it.
  *
  * <p>Payments and kept cards take the reference and the whole billing
  * address only; orders and subscriptions take any of the three parts.

@@ -4,9 +4,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 
 /**
  * The customer of an order or a subscription, as they were written: the key
- * the merchant keeps them under (or the {@code guest-} one made up for a payer
- * it never named), where the bill goes, and where the goods go when somebody
- * said.
+ * the merchant keeps them under, where the bill goes, and where the goods go
+ * when somebody said.
  */
 public final class NamedCustomer {
 
@@ -15,7 +14,7 @@ public final class NamedCustomer {
     private final Address shippingAddress;
 
     private NamedCustomer(JsonNode customer) {
-        this.reference = Read.string(customer.path("reference"));
+        this.reference = Read.nonEmptyString(customer.path("reference"));
         this.billingAddress = Address.in(customer.path("billing_address"));
         this.shippingAddress = Address.in(customer.path("shipping_address"));
     }
@@ -24,12 +23,12 @@ public final class NamedCustomer {
         return Read.object(customer) == null ? null : new NamedCustomer(customer);
     }
 
-    /** The merchant's own key for the customer. */
+    /** The merchant's own key for the customer; null for somebody the team does not keep. */
     public String getReference() {
         return reference;
     }
 
-    /** Where they are billed, as far as it is known. */
+    /** Where they are billed, as far as it is known; null until somebody has said. */
     public Address getBillingAddress() {
         return billingAddress;
     }

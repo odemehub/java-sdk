@@ -4,10 +4,9 @@ import java.time.Duration;
 import java.util.Objects;
 
 /**
- * The address the gateway is reached at, the credentials it is reached with
- * and the channel the caller speaks for. A credential pair belongs to a
- * single team, and the team is part of the address, so a pair only ever
- * opens its own team's endpoints.
+ * The address the gateway is reached at and the credentials it is reached
+ * with. A credential pair belongs to a single team, and the team is part of
+ * the address, so a pair only ever opens its own team's endpoints.
  */
 public final class Options {
 
@@ -16,7 +15,6 @@ public final class Options {
 
     private final String baseUrl;
     private final String team;
-    private final String channelToken;
     private final String apiKey;
     private final String apiSecret;
     private final Duration timeout;
@@ -24,7 +22,6 @@ public final class Options {
     private Options(Builder builder) {
         this.baseUrl = Objects.requireNonNull(builder.baseUrl, "baseUrl zorunludur.");
         this.team = Objects.requireNonNull(builder.team, "team zorunludur.");
-        this.channelToken = Objects.requireNonNull(builder.channelToken, "channelToken zorunludur.");
         this.apiKey = Objects.requireNonNull(builder.apiKey, "apiKey zorunludur.");
         this.apiSecret = Objects.requireNonNull(builder.apiSecret, "apiSecret zorunludur.");
         this.timeout = builder.timeout;
@@ -42,16 +39,6 @@ public final class Options {
     /** The team the payments are made on behalf of: the ten-digit workspace id the Entegrasyon page shows. */
     public String getTeam() {
         return team;
-    }
-
-    /**
-     * The channel every request speaks for: the shop, the marketplace or the
-     * branch the customer reached the merchant through, by the token the
-     * team's own Kanallar page gives it. A merchant selling on more than one
-     * channel may still name another on a single request.
-     */
-    public String getChannelToken() {
-        return channelToken;
     }
 
     public String getApiKey() {
@@ -84,14 +71,13 @@ public final class Options {
 
     @Override
     public String toString() {
-        return "Options[baseUrl=" + baseUrl + ", team=" + team + ", channelToken=" + channelToken + ", timeout=" + timeout + "]";
+        return "Options[baseUrl=" + baseUrl + ", team=" + team + ", timeout=" + timeout + "]";
     }
 
     public static final class Builder {
 
         private String baseUrl;
         private String team;
-        private String channelToken;
         private String apiKey;
         private String apiSecret;
         private Duration timeout = Duration.ofMinutes(1);
@@ -106,11 +92,6 @@ public final class Options {
 
         public Builder team(String team) {
             this.team = team;
-            return this;
-        }
-
-        public Builder channelToken(String channelToken) {
-            this.channelToken = channelToken;
             return this;
         }
 

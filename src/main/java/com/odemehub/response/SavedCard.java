@@ -18,6 +18,7 @@ public final class SavedCard {
     private final String expiryYear;
     private final boolean isDefault;
     private final String createdAt;
+    private final SavedCardCustomer customer;
 
     private SavedCard(JsonNode card) {
         this.token = Read.string(card.path("token"));
@@ -30,6 +31,7 @@ public final class SavedCard {
         this.expiryYear = Read.string(card.path("expiry_year"));
         this.isDefault = Read.bool(card.path("is_default"));
         this.createdAt = Read.optionalString(card.path("created_at"));
+        this.customer = Read.object(card.path("customer")) == null ? null : SavedCardCustomer.in(card.path("customer"));
     }
 
     public static SavedCard fromBody(JsonNode card) {
@@ -86,6 +88,11 @@ public final class SavedCard {
 
     public String getCreatedAt() {
         return createdAt;
+    }
+
+    /** Who the card is kept for; listed cards only, the other answers carry it beside the card. */
+    public SavedCardCustomer getCustomer() {
+        return customer;
     }
 
     @Override

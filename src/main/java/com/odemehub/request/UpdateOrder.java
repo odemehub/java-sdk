@@ -7,12 +7,9 @@ import java.util.Map;
  * A change to an open order, named by its token in the address and again in
  * the body. Only what is sent is written: a field left out keeps what there
  * was, lines sent replace every line there was, and customer fields sent are
- * merged over the ones the order had. A paid order, or one with a payment
- * under way, cannot be changed; the gateway says so on {@code token}.
- *
- * <p>The channel is written only when this message names one; the client's
- * own is not sent, so a change never moves an order between channels by
- * accident.
+ * merged over the ones the order had; a reference sent takes the place of the
+ * one there was. A paid order, or one with a payment under way, cannot be
+ * changed; the gateway says so on {@code token}.
  */
 public final class UpdateOrder extends CheckoutMessage {
 
@@ -41,10 +38,10 @@ public final class UpdateOrder extends CheckoutMessage {
     }
 
     @Override
-    public Map<String, Object> toBody(String channelToken) {
+    public Map<String, Object> toBody() {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("token", token);
-        body.putAll(body(cleared(details(namedChannel()))));
+        body.putAll(body(cleared(details())));
 
         return body;
     }

@@ -15,16 +15,18 @@ public final class Item {
     private final String unitAmount;
     private final int quantity;
     private final String taxRate;
-    private final String channelReference;
+    private final String reference;
     private final String image;
+    private final Boolean saveAsProduct;
 
     private Item(Builder builder) {
         this.name = Fields.required(builder.name, "name");
         this.unitAmount = Fields.required(builder.unitAmount, "unitAmount");
         this.quantity = Fields.required(builder.quantity, "quantity");
-        this.taxRate = Fields.required(builder.taxRate, "taxRate");
-        this.channelReference = builder.channelReference;
+        this.taxRate = builder.taxRate;
+        this.reference = builder.reference;
         this.image = builder.image;
+        this.saveAsProduct = builder.saveAsProduct;
     }
 
     public static Builder builder() {
@@ -33,19 +35,20 @@ public final class Item {
 
     Map<String, Object> toBody() {
         return Fields.said(
-            "channel_reference", channelReference,
+            "reference", reference,
             "name", name,
             "image", image,
             "quantity", quantity,
             "unit_amount", unitAmount,
-            "tax_rate", taxRate
+            "tax_rate", taxRate,
+            "save_as_product", saveAsProduct
         );
     }
 
     @Override
     public String toString() {
         return "Item[name=" + name + ", unitAmount=" + unitAmount + ", quantity=" + quantity + ", taxRate=" + taxRate
-            + ", channelReference=" + channelReference + "]";
+            + ", reference=" + reference + "]";
     }
 
     public static final class Builder {
@@ -54,8 +57,9 @@ public final class Item {
         private String unitAmount;
         private Integer quantity;
         private String taxRate;
-        private String channelReference;
+        private String reference;
         private String image;
+        private Boolean saveAsProduct;
 
         private Builder() {
         }
@@ -77,21 +81,31 @@ public final class Item {
             return this;
         }
 
-        /** The tax inside the price, as a percentage: "20" or "20.00". */
+        /** The tax inside the price, as a percentage: "20" or "20.00". Left out, the line carries no tax. */
         public Builder taxRate(String taxRate) {
             this.taxRate = taxRate;
             return this;
         }
 
         /** The merchant's own key for what is on the line, if it has one. */
-        public Builder channelReference(String channelReference) {
-            this.channelReference = channelReference;
+        public Builder reference(String reference) {
+            this.reference = reference;
             return this;
         }
 
         /** The https address of the picture shown beside the line at checkout. */
         public Builder image(String image) {
             this.image = image;
+            return this;
+        }
+
+        /**
+         * Whether the line is also kept on the team's product list: written
+         * there under its reference, or the product with that reference
+         * brought up to the line. A line kept so has to carry a reference.
+         */
+        public Builder saveAsProduct(boolean saveAsProduct) {
+            this.saveAsProduct = saveAsProduct;
             return this;
         }
 

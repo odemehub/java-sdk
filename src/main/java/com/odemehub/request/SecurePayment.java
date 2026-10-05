@@ -27,8 +27,8 @@ public final class SecurePayment extends Payment {
 
     @Override
     @SuppressWarnings("unchecked")
-    public Map<String, Object> toBody(String channelToken) {
-        Map<String, Object> body = super.toBody(channelToken);
+    public Map<String, Object> toBody() {
+        Map<String, Object> body = super.toBody();
         Map<String, Object> transaction = (Map<String, Object>) body.get("transaction");
         transaction.put("callback_url", callbackUrl);
 

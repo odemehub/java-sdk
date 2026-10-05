@@ -15,13 +15,11 @@ import java.util.List;
 public final class Order {
 
     private final String token;
-    private final String channelToken;
-    private final String channelReference;
+    private final String reference;
     private final String description;
     private final String paymentProviderToken;
     private final OrderStatus status;
     private final List<Item> items;
-    private final List<ShippingMethod> shippingMethods;
     private final ShippingMethod shippingMethod;
     private final String subtotal;
     private final String shippingAmount;
@@ -36,13 +34,11 @@ public final class Order {
 
     private Order(JsonNode order, JsonNode customer) {
         this.token = Read.string(order.path("token"));
-        this.channelToken = Read.string(order.path("channel_token"));
-        this.channelReference = Read.string(order.path("channel_reference"));
+        this.reference = Read.string(order.path("reference"));
         this.description = Read.nonEmptyString(order.path("description"));
         this.paymentProviderToken = Read.nonEmptyString(order.path("payment_provider_token"));
         this.status = OrderStatus.from(Read.optionalString(order.path("status")));
         this.items = Read.list(order.path("items"), Item::fromBody);
-        this.shippingMethods = Read.list(order.path("shipping_methods"), ShippingMethod::fromBody);
         this.shippingMethod = ShippingMethod.in(order.path("shipping_method"));
         this.subtotal = Read.string(order.path("subtotal"));
         this.shippingAmount = Read.string(order.path("shipping_amount"));
@@ -81,14 +77,10 @@ public final class Order {
         return token;
     }
 
-    /** The channel the order was opened on. */
-    public String getChannelToken() {
-        return channelToken;
-    }
 
     /** The number the order is known by in the calling system. */
-    public String getChannelReference() {
-        return channelReference;
+    public String getReference() {
+        return reference;
     }
 
     public String getDescription() {
@@ -110,10 +102,6 @@ public final class Order {
         return items;
     }
 
-    /** The ways the goods may be sent. */
-    public List<ShippingMethod> getShippingMethods() {
-        return shippingMethods;
-    }
 
     /** The way the payer picked; null until they have, or when none was offered. */
     public ShippingMethod getShippingMethod() {
@@ -171,6 +159,6 @@ public final class Order {
 
     @Override
     public String toString() {
-        return "Order[token=" + token + ", channelReference=" + channelReference + ", status=" + status + ", amount=" + amount + ", currency=" + currency + ", checkoutUrl=" + checkoutUrl + ", transaction=" + transaction + "]";
+        return "Order[token=" + token + ", reference=" + reference + ", status=" + status + ", amount=" + amount + ", currency=" + currency + ", checkoutUrl=" + checkoutUrl + ", transaction=" + transaction + "]";
     }
 }

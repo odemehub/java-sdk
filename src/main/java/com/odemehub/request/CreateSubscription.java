@@ -8,12 +8,12 @@ import java.util.Map;
  * gateway's own checkout page and the rest taken from the card kept then.
  * The answer carries the checkout address; the customer is sent there, pays
  * with a card the gateway keeps as their default, and is posted back to the
- * success address. The addresses set for its channel under Webhook in the
- * panel hear every change of state after that: each renewal paid, one that
- * could not be, the cancellation, the end.
+ * success address. The addresses the team set under Webhook in the panel hear
+ * every change of state after that: each renewal paid, one that could not
+ * be, the cancellation, the end.
  *
- * <p>The customer needs a reference, which is what the card renewals are
- * taken from is kept under. The account, named or the default, has to keep
+ * <p>The customer needs a reference: the card the renewals are taken from is
+ * kept for the team's customer under it. The account, named or the default, has to keep
  * cards and take 3D payments, and the plan has to cover saved cards.
  */
 public final class CreateSubscription extends CheckoutMessage {
@@ -23,7 +23,7 @@ public final class CreateSubscription extends CheckoutMessage {
 
     private CreateSubscription(Builder builder) {
         super(builder);
-        Fields.required(builder.channelReference, "channelReference");
+        Fields.required(builder.reference, "reference");
         Fields.required(builder.successUrl, "successUrl");
         Fields.required(builder.items, "items");
         Fields.required(builder.customer, "customer");
@@ -46,8 +46,8 @@ public final class CreateSubscription extends CheckoutMessage {
     }
 
     @Override
-    public Map<String, Object> toBody(String channelToken) {
-        Map<String, Object> group = details(channel(channelToken));
+    public Map<String, Object> toBody() {
+        Map<String, Object> group = details();
         group.put("period", period.getValue());
 
         if (renewalLimit != null) {

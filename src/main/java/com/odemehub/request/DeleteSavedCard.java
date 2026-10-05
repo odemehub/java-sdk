@@ -24,7 +24,7 @@ public final class DeleteSavedCard extends Message {
     }
 
     @Override
-    public Map<String, Object> toBody(String channelToken) {
+    public Map<String, Object> toBody() {
         return Fields.of("token", token);
     }
 }

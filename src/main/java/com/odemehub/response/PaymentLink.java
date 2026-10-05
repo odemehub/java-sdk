@@ -11,8 +11,7 @@ import java.util.List;
 public final class PaymentLink {
 
     private final String token;
-    private final String channelToken;
-    private final String channelReference;
+    private final String reference;
     private final String description;
     private final String paymentProviderToken;
     private final List<Item> items;
@@ -25,11 +24,12 @@ public final class PaymentLink {
     private final String expiresAt;
     private final String checkoutUrl;
     private final String createdAt;
+    private final List<Transaction> transactions;
+    private final Integer transactionsCount;
 
     private PaymentLink(JsonNode link) {
         this.token = Read.string(link.path("token"));
-        this.channelToken = Read.nonEmptyString(link.path("channel_token"));
-        this.channelReference = Read.string(link.path("channel_reference"));
+        this.reference = Read.string(link.path("reference"));
         this.description = Read.nonEmptyString(link.path("description"));
         this.paymentProviderToken = Read.nonEmptyString(link.path("payment_provider_token"));
         this.items = Read.list(link.path("items"), Item::fromBody);
@@ -42,6 +42,8 @@ public final class PaymentLink {
         this.expiresAt = Read.nonEmptyString(link.path("expires_at"));
         this.checkoutUrl = Read.nonEmptyString(link.path("checkout_url"));
         this.createdAt = Read.nonEmptyString(link.path("created_at"));
+        this.transactions = Read.list(link.path("transactions"), Transaction::fromBody);
+        this.transactionsCount = Read.optionalInteger(link.path("transactions_count"));
     }
 
     public static PaymentLink fromBody(JsonNode link) {
@@ -53,14 +55,10 @@ public final class PaymentLink {
         return token;
     }
 
-    /** The channel the link is on; null for the team's own ödemehub channel. */
-    public String getChannelToken() {
-        return channelToken;
-    }
 
     /** The reference the link is known by. */
-    public String getChannelReference() {
-        return channelReference;
+    public String getReference() {
+        return reference;
     }
 
     public String getDescription() {
@@ -121,8 +119,23 @@ public final class PaymentLink {
         return createdAt;
     }
 
+    /** The latest attempts made on the link, at most fifty, newest first, the refused ones included; listed links only. */
+    public List<Transaction> getTransactions() {
+        return transactions;
+    }
+
+    /** How many attempts have been made on the link in all, however many are listed; null but on a listed link. */
+    public Integer getTransactionsCount() {
+        return transactionsCount;
+    }
+
+    /** The listed attempts that went through. */
+    public List<Transaction> successful() {
+        return transactions.stream().filter(Transaction::isSuccessful).toList();
+    }
+
     @Override
     public String toString() {
-        return "PaymentLink[token=" + token + ", channelReference=" + channelReference + ", amount=" + amount + ", currency=" + currency + ", isActive=" + isActive + ", expiresAt=" + expiresAt + ", checkoutUrl=" + checkoutUrl + "]";
+        return "PaymentLink[token=" + token + ", reference=" + reference + ", amount=" + amount + ", currency=" + currency + ", isActive=" + isActive + ", expiresAt=" + expiresAt + ", checkoutUrl=" + checkoutUrl + "]";
     }
 }

@@ -5,21 +5,21 @@ import java.util.Map;
 /**
  * A card kept for a customer without a payment being made on it. The
  * provider is told who the card belongs to, so the token it hands back is
- * held under that customer and the card can be charged again later. It is
- * kept under the channel and the customer's reference.
+ * held under that customer and the card can be charged again later. Once the
+ * provider takes it, the team's customer under the reference is written from
+ * what was sent and the card is kept for them.
  *
  * <p>Providers without a card store of their own keep a card by charging a
  * small amount and giving it straight back; those need the security code,
  * and the ones with a real card store do not. It is never stored.
  */
-public final class CreateSavedCard extends ChannelMessage {
+public final class CreateSavedCard extends Message {
 
     private final Customer customer;
     private final Card card;
     private final String paymentProviderToken;
 
     private CreateSavedCard(Builder builder) {
-        super(builder.channelToken);
         this.customer = Fields.required(builder.customer, "customer");
         this.card = Fields.required(builder.card, "card");
         this.paymentProviderToken = builder.paymentProviderToken;
@@ -35,21 +35,18 @@ public final class CreateSavedCard extends ChannelMessage {
     }
 
     @Override
-    public Map<String, Object> toBody(String channelToken) {
+    public Map<String, Object> toBody() {
         Map<String, Object> card = this.card.toBody();
         card.remove("should_save");
 
-        return Fields.of(
-            "saved_card", Fields.said(
-                "channel_token", channel(channelToken),
-                "payment_provider_token", paymentProviderToken
-            ),
+        return Fields.said(
+            "saved_card", paymentProviderToken == null ? null : Fields.of("payment_provider_token", paymentProviderToken),
             "customer", customer.toBody(),
             "card", card
         );
     }
 
-    public static final class Builder extends ChannelMessage.Builder<Builder> {
+    public static final class Builder {
 
         private Customer customer;
         private Card card;
@@ -72,11 +69,6 @@ public final class CreateSavedCard extends ChannelMessage {
         /** The payment account to keep the card at; it has to keep cards. Left out, the team's default account is used. */
         public Builder paymentProviderToken(String paymentProviderToken) {
             this.paymentProviderToken = paymentProviderToken;
-            return this;
-        }
-
-        @Override
-        protected Builder self() {
             return this;
         }
 

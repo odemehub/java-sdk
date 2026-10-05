@@ -36,7 +36,7 @@ public final class UpdateSavedCard extends Message {
     }
 
     @Override
-    public Map<String, Object> toBody(String channelToken) {
+    public Map<String, Object> toBody() {
         return Fields.of(
             "token", token,
             "saved_card", Fields.of("is_default", isDefault)

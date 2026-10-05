@@ -12,20 +12,21 @@ import java.util.Map;
  * to send the customer to, and they give their card there.
  *
  * <p>What it comes to is not sent. The gateway adds up the lines and the
- * shipping method the payer picks and answers with the amount, so the total
+ * shipping method the payer picks from the team's own list and answers with
+ * the amount, so the total
  * can never disagree with what it is made up of. The customer is whatever is
  * known of them: it is filled in on the checkout page and the payer is asked
  * for the rest.
  *
- * <p>Opening is idempotent per channel reference: opening again under a
+ * <p>Opening is idempotent per reference: opening again under a
  * reference that already has an open order or subscription overwrites it with
  * what is sent and answers with the one that was there, under its own token.
  * A paid order, a subscription that has been paid, or one with a payment
- * under way is not touched; the gateway says so on {@code channel_reference}.
+ * under way is not touched; the gateway says so on {@code reference}.
  */
-public abstract class CheckoutMessage extends ChannelMessage {
+public abstract class CheckoutMessage extends Message {
 
-    private final String channelReference;
+    private final String reference;
     private final String successUrl;
     private final List<Item> items;
     private final Customer customer;
@@ -33,13 +34,11 @@ public abstract class CheckoutMessage extends ChannelMessage {
     private final String description;
     private final Currency currency;
     private final String paymentProviderToken;
-    private final Boolean requiresShippingAddress;
-    private final List<ShippingMethod> shippingMethods;
+    private final Boolean requiresShipping;
     private final List<String> clear;
 
     protected CheckoutMessage(Builder<?> builder) {
-        super(builder.channelToken);
-        this.channelReference = builder.channelReference;
+        this.reference = builder.reference;
         this.successUrl = builder.successUrl;
         this.items = builder.items == null ? null : List.copyOf(builder.items);
         this.customer = builder.customer;
@@ -47,8 +46,7 @@ public abstract class CheckoutMessage extends ChannelMessage {
         this.description = builder.description;
         this.currency = builder.currency;
         this.paymentProviderToken = builder.paymentProviderToken;
-        this.requiresShippingAddress = builder.requiresShippingAddress;
-        this.shippingMethods = builder.shippingMethods == null ? null : List.copyOf(builder.shippingMethods);
+        this.requiresShipping = builder.requiresShipping;
         this.clear = List.copyOf(builder.clear);
     }
 
@@ -59,21 +57,17 @@ public abstract class CheckoutMessage extends ChannelMessage {
 
     /**
      * The group's fields, with what the caller left unsaid left out.
-     *
-     * @param channel The channel to write, or null to leave it as it is.
      */
-    protected Map<String, Object> details(String channel) {
+    protected Map<String, Object> details() {
         return Fields.said(
-            "channel_token", channel,
-            "channel_reference", channelReference,
+            "reference", reference,
             "description", description,
             "payment_provider_token", paymentProviderToken,
             "currency", currency == null ? null : currency.getValue(),
             "success_url", successUrl,
             "cancel_url", cancelUrl,
-            "requires_shipping_address", requiresShippingAddress,
-            "items", Fields.each(items, Item::toBody),
-            "shipping_methods", Fields.each(shippingMethods, ShippingMethod::toBody)
+            "requires_shipping", requiresShipping,
+            "items", Fields.each(items, Item::toBody)
         );
     }
 
@@ -94,9 +88,8 @@ public abstract class CheckoutMessage extends ChannelMessage {
         );
     }
 
-    public abstract static class Builder<B extends Builder<B>> extends ChannelMessage.Builder<B> {
-
-        protected String channelReference;
+    public abstract static class Builder<B extends Builder<B>> {
+        protected String reference;
         protected String successUrl;
         protected List<Item> items;
         protected Customer customer;
@@ -104,13 +97,14 @@ public abstract class CheckoutMessage extends ChannelMessage {
         protected String description;
         protected Currency currency;
         protected String paymentProviderToken;
-        protected Boolean requiresShippingAddress;
-        protected List<ShippingMethod> shippingMethods;
+        protected Boolean requiresShipping;
         protected final List<String> clear = new ArrayList<>();
 
+        protected abstract B self();
+
         /** The reference it is known by in the calling system. It has to carry at least one digit. */
-        public B channelReference(String channelReference) {
-            this.channelReference = channelReference;
+        public B reference(String reference) {
+            this.reference = reference;
             return self();
         }
 
@@ -165,19 +159,13 @@ public abstract class CheckoutMessage extends ChannelMessage {
             return self();
         }
 
-        /** Whether the checkout page asks the payer where the goods go. */
-        public B requiresShippingAddress(boolean requiresShippingAddress) {
-            this.requiresShippingAddress = requiresShippingAddress;
-            return self();
-        }
-
         /**
-         * How the goods may be sent, for the payer to pick from; up to twenty.
-         * Sent on a change, they replace the ones there were, and an empty list
-         * removes them all.
+         * Whether the checkout page asks the payer where the goods go. One who
+         * is picks a way of sending from the team's own list, of those that
+         * send there, and its price is added to the amount.
          */
-        public B shippingMethods(List<ShippingMethod> shippingMethods) {
-            this.shippingMethods = shippingMethods;
+        public B requiresShipping(boolean requiresShipping) {
+            this.requiresShipping = requiresShipping;
             return self();
         }
 

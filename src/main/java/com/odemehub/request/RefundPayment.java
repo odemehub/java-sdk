@@ -37,8 +37,8 @@ public final class RefundPayment extends PaymentMessage {
      * altogether rather than sent empty.
      */
     @Override
-    public Map<String, Object> toBody(String channelToken) {
-        Map<String, Object> body = super.toBody(channelToken);
+    public Map<String, Object> toBody() {
+        Map<String, Object> body = super.toBody();
 
         if (amount != null) {
             body.put("amount", amount);

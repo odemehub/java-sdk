@@ -4,8 +4,11 @@ import com.fasterxml.jackson.databind.JsonNode;
 import java.util.List;
 
 /**
- * Every payment attempt made on a channel within a span of days, oldest
- * first, with the span that was read.
+ * Payments asked after, each with its state, amount, customer and what became
+ * of its money, the ones the bank turned away included. The answer is always a list, oldest first, and an empty one when
+ * nothing matched. The days are the ones the gateway used, when the records
+ * were asked for by the days they were made on: the ones asked for, or the
+ * last seven when none were.
  */
 public final class PaymentList {
 
@@ -16,8 +19,8 @@ public final class PaymentList {
 
     private PaymentList(JsonNode body) {
         this.result = Result.fromBody(body);
-        this.createdFrom = Read.string(body.path("created_from"));
-        this.createdTo = Read.string(body.path("created_to"));
+        this.createdFrom = Read.nonEmptyString(body.path("created_from"));
+        this.createdTo = Read.nonEmptyString(body.path("created_to"));
         this.payments = Read.list(body.path("payments"), Transaction::fromBody);
     }
 
@@ -25,27 +28,27 @@ public final class PaymentList {
         return new PaymentList(body);
     }
 
-    /** The attempts that went through. */
-    public List<Transaction> successful() {
-        return payments.stream().filter(Transaction::isSuccessful).toList();
-    }
-
     public Result getResult() {
         return result;
     }
 
-    /** The first day read, {@code YYYY-MM-DD} in the team's timezone. */
+    /** The first day listed, {@code YYYY-MM-DD} in the team's timezone; null when they were asked for by token or reference. */
     public String getCreatedFrom() {
         return createdFrom;
     }
 
-    /** The last day read. */
+    /** The last day listed, the same way. */
     public String getCreatedTo() {
         return createdTo;
     }
 
     public List<Transaction> getPayments() {
         return payments;
+    }
+
+    /** The payments that went through. */
+    public List<Transaction> successful() {
+        return payments.stream().filter(Transaction::isSuccessful).toList();
     }
 
     @Override

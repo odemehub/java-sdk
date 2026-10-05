@@ -29,9 +29,7 @@ import java.util.Map;
  * it, so both sides can tell the other is really who it says it is.
  *
  * <p>There is one method per endpoint, named after it: {@code create-order}
- * is {@code createOrder()} and takes a {@code request.CreateOrder}. The
- * channel the merchant speaks for is named once, on the options, and put into
- * each request wherever its endpoint expects it.
+ * is {@code createOrder()} and takes a {@code request.CreateOrder}.
  *
  * <p>A client holds no state beyond its options, so one can be shared across
  * threads for the life of the application.
@@ -61,7 +59,7 @@ public final class Client {
     /**
      * Start a payment the customer confirms with their bank. A successful
      * answer is not a settled payment: the customer is still to be sent to the
-     * address it comes back with, and {@code retrievePayment} says what became
+     * address it comes back with, and {@code retrievePayments} says what became
      * of it once they are back.
      */
     public com.odemehub.response.SecurePayment securePayment(com.odemehub.request.SecurePayment payment) {
@@ -94,28 +92,11 @@ public final class Client {
     }
 
     /**
-     * How a payment went, by its token. A customer sent to their bank comes
-     * back to the merchant with the payment's token and a hint at how it went;
-     * the hint is worth nothing on its own, and this call says what really
-     * became of it.
+     * Payments as they stand — by token, every attempt under one of the
+     * merchant's own references, or the ones made between two days; the
+     * refused ones included, oldest first.
      */
-    public com.odemehub.response.Payment retrievePayment(com.odemehub.request.RetrievePayment payment) {
-        return com.odemehub.response.Payment.fromBody(send(payment));
-    }
-
-    /**
-     * How the latest payment under one of the merchant's own references went,
-     * for a merchant that sent a payment and never heard back.
-     */
-    public com.odemehub.response.Payment retrievePaymentByReference(com.odemehub.request.RetrievePaymentByReference payment) {
-        return com.odemehub.response.Payment.fromBody(send(payment));
-    }
-
-    /**
-     * Every payment attempt made on a channel within a span of at most seven
-     * days, the refused ones included, oldest first.
-     */
-    public com.odemehub.response.PaymentList retrievePaymentsByChannelReference(com.odemehub.request.RetrievePaymentsByChannelReference payments) {
+    public com.odemehub.response.PaymentList retrievePayments(com.odemehub.request.RetrievePayments payments) {
         return com.odemehub.response.PaymentList.fromBody(send(payments));
     }
 
@@ -138,25 +119,9 @@ public final class Client {
     }
 
     /**
-     * Where an order stands, by its token.
+     * Orders as they stand, each with its customer.
      */
-    public com.odemehub.response.OrderDetails retrieveOrder(com.odemehub.request.RetrieveOrder order) {
-        return com.odemehub.response.OrderDetails.fromBody(send(order));
-    }
-
-    /**
-     * Where the latest order under one of the merchant's own references
-     * stands.
-     */
-    public com.odemehub.response.OrderDetails retrieveOrderByReference(com.odemehub.request.RetrieveOrderByReference order) {
-        return com.odemehub.response.OrderDetails.fromBody(send(order));
-    }
-
-    /**
-     * Every order opened on a channel within a span of at most seven days,
-     * oldest first.
-     */
-    public com.odemehub.response.OrderList retrieveOrdersByChannelReference(com.odemehub.request.RetrieveOrdersByChannelReference orders) {
+    public com.odemehub.response.OrderList retrieveOrders(com.odemehub.request.RetrieveOrders orders) {
         return com.odemehub.response.OrderList.fromBody(send(orders));
     }
 
@@ -176,25 +141,10 @@ public final class Client {
     }
 
     /**
-     * A payment link as it stands, by its token, with how many payment
-     * attempts were made on it and the latest fifty of them.
+     * Payment links as they stand, each with the latest fifty payment attempts
+     * made on it and how many there have been in all.
      */
-    public com.odemehub.response.PaymentLinkDetails retrievePaymentLink(com.odemehub.request.RetrievePaymentLink link) {
-        return com.odemehub.response.PaymentLinkDetails.fromBody(send(link));
-    }
-
-    /**
-     * A payment link as it stands, by the merchant's own reference for it.
-     */
-    public com.odemehub.response.PaymentLinkDetails retrievePaymentLinkByReference(com.odemehub.request.RetrievePaymentLinkByReference link) {
-        return com.odemehub.response.PaymentLinkDetails.fromBody(send(link));
-    }
-
-    /**
-     * Every payment link opened on a channel within a span of at most seven
-     * days, oldest first.
-     */
-    public com.odemehub.response.PaymentLinkList retrievePaymentLinksByChannelReference(com.odemehub.request.RetrievePaymentLinksByChannelReference links) {
+    public com.odemehub.response.PaymentLinkList retrievePaymentLinks(com.odemehub.request.RetrievePaymentLinks links) {
         return com.odemehub.response.PaymentLinkList.fromBody(send(links));
     }
 
@@ -216,25 +166,10 @@ public final class Client {
     }
 
     /**
-     * Where a subscription stands, by its token.
+     * Subscriptions as they stand, each with its customer and the renewal it
+     * is on.
      */
-    public com.odemehub.response.SubscriptionDetails retrieveSubscription(com.odemehub.request.RetrieveSubscription subscription) {
-        return com.odemehub.response.SubscriptionDetails.fromBody(send(subscription));
-    }
-
-    /**
-     * Where the latest subscription under one of the merchant's own
-     * references stands.
-     */
-    public com.odemehub.response.SubscriptionDetails retrieveSubscriptionByReference(com.odemehub.request.RetrieveSubscriptionByReference subscription) {
-        return com.odemehub.response.SubscriptionDetails.fromBody(send(subscription));
-    }
-
-    /**
-     * Every subscription opened on a channel within a span of at most seven
-     * days, oldest first.
-     */
-    public com.odemehub.response.SubscriptionList retrieveSubscriptionsByChannelReference(com.odemehub.request.RetrieveSubscriptionsByChannelReference subscriptions) {
+    public com.odemehub.response.SubscriptionList retrieveSubscriptions(com.odemehub.request.RetrieveSubscriptions subscriptions) {
         return com.odemehub.response.SubscriptionList.fromBody(send(subscriptions));
     }
 
@@ -256,16 +191,11 @@ public final class Client {
     }
 
     /**
-     * One kept card, by its token.
+     * Kept cards — by token, every card of a customer by their reference, or
+     * the ones kept between two days — each with its customer, the default
+     * first.
      */
-    public com.odemehub.response.SavedCardDetails retrieveSavedCard(com.odemehub.request.RetrieveSavedCard savedCard) {
-        return com.odemehub.response.SavedCardDetails.fromBody(send(savedCard));
-    }
-
-    /**
-     * The cards kept for a customer, the default one first.
-     */
-    public com.odemehub.response.SavedCardList retrieveSavedCardsByReference(com.odemehub.request.RetrieveSavedCardsByReference savedCards) {
+    public com.odemehub.response.SavedCardList retrieveSavedCards(com.odemehub.request.RetrieveSavedCards savedCards) {
         return com.odemehub.response.SavedCardList.fromBody(send(savedCards));
     }
 
@@ -327,16 +257,15 @@ public final class Client {
      * Sign what is being asked for, hand it to the gateway and read the answer
      * back. The body is signed exactly as it is sent, byte for byte, together
      * with the moment, the method and the path, so it is written once and used
-     * for both; a GET sends no body and signs the empty string.
+     * for both.
      */
     private JsonNode send(Message message) {
         String method = message.method();
         String path = options.path(message.path());
-        boolean isGet = method.equals("GET");
         byte[] body;
 
         try {
-            body = isGet ? new byte[0] : JSON.writeValueAsBytes(message.toBody(options.getChannelToken()));
+            body = JSON.writeValueAsBytes(message.toBody());
         } catch (JsonProcessingException exception) {
             throw new UnexpectedResponseException("İstek gövdesi JSON olarak yazılamadı: " + exception.getMessage(), 0);
         }
@@ -344,15 +273,11 @@ public final class Client {
         HttpRequest.Builder request = HttpRequest.newBuilder(URI.create(options.url(message.path())))
             .timeout(options.getTimeout())
             .header(Options.API_KEY_HEADER, options.getApiKey())
-            .header("Accept", "application/json");
+            .header("Accept", "application/json")
+            .header("Content-Type", "application/json")
+            .POST(HttpRequest.BodyPublishers.ofByteArray(body));
 
         signature.headers(method, path, body).forEach(request::header);
-
-        if (isGet) {
-            request.GET();
-        } else {
-            request.header("Content-Type", "application/json").POST(HttpRequest.BodyPublishers.ofByteArray(body));
-        }
 
         HttpResponse<byte[]> response;
 

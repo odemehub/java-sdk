@@ -8,7 +8,7 @@ import com.fasterxml.jackson.databind.JsonNode;
  */
 public final class Item {
 
-    private final String channelReference;
+    private final String reference;
     private final String name;
     private final String image;
     private final int quantity;
@@ -16,7 +16,7 @@ public final class Item {
     private final String taxRate;
 
     private Item(JsonNode item) {
-        this.channelReference = Read.nonEmptyString(item.path("channel_reference"));
+        this.reference = Read.nonEmptyString(item.path("reference"));
         this.name = Read.string(item.path("name"));
         this.image = Read.nonEmptyString(item.path("image"));
         this.quantity = Read.integer(item.path("quantity"));
@@ -29,8 +29,8 @@ public final class Item {
     }
 
     /** The merchant's own key for what is on the line; null when it gave none. */
-    public String getChannelReference() {
-        return channelReference;
+    public String getReference() {
+        return reference;
     }
 
     public String getName() {
@@ -58,6 +58,6 @@ public final class Item {
 
     @Override
     public String toString() {
-        return "Item[channelReference=" + channelReference + ", name=" + name + ", quantity=" + quantity + ", unitAmount=" + unitAmount + ", taxRate=" + taxRate + "]";
+        return "Item[reference=" + reference + ", name=" + name + ", quantity=" + quantity + ", unitAmount=" + unitAmount + ", taxRate=" + taxRate + "]";
     }
 }

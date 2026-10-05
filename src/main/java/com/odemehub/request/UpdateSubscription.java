@@ -13,18 +13,16 @@ import java.util.Map;
  * and customer fields sent are merged over the ones there were.
  *
  * <p>Until the first payment anything about it may be changed. Once it has
- * been paid, what it renews on stays as it was opened: the channel, the
- * account, the currency, the period and the customer's reference are turned
- * down if sent with another value.
+ * been paid, only the status, the period, the renewal limit and the prices
+ * of the same lines may change; the gateway turns down anything else, the
+ * customer included.
  *
  * <p>This is also how a subscription is called off: send the status
  * {@code cancelled}, the one status a merchant may set. Nothing is charged
  * after that and nothing is given back; a renewal already paid is served to
  * its end. A subscription that is over, or has a payment under way, cannot
  * be changed; the gateway says so on {@code token}.
- *
- * <p>The channel is written only when this message names one; the client's
- * own is not sent.
+
  */
 public final class UpdateSubscription extends CheckoutMessage {
 
@@ -59,8 +57,8 @@ public final class UpdateSubscription extends CheckoutMessage {
     }
 
     @Override
-    public Map<String, Object> toBody(String channelToken) {
-        Map<String, Object> group = details(namedChannel());
+    public Map<String, Object> toBody() {
+        Map<String, Object> group = details();
         group.putAll(Fields.said(
             "period", period == null ? null : period.getValue(),
             "renewal_limit", renewalLimit,
@@ -91,7 +89,6 @@ public final class UpdateSubscription extends CheckoutMessage {
             return this;
         }
 
-        /** Only until the first payment. */
         public Builder period(Period period) {
             this.period = period;
             return this;

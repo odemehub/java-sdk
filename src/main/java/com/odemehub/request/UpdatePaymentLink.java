@@ -13,17 +13,14 @@ import java.util.Map;
  * {@code isActive(false)}; switching one whose last day has gone by back on
  * needs a new {@code expiresAt} with it. A link with a payment under way
  * cannot be changed; the gateway says so on {@code token}.
- *
- * <p>The channel is written only when this message names one; the client's
- * own is not sent. {@link ChannelMessage#ODEMEHUB_CHANNEL} moves the link to
- * the team's own ödemehub channel.
+
  */
-public final class UpdatePaymentLink extends ChannelMessage {
+public final class UpdatePaymentLink extends Message {
 
     private final String token;
     private final List<Item> items;
     private final Currency currency;
-    private final String channelReference;
+    private final String reference;
     private final String description;
     private final String paymentProviderToken;
     private final String expiresAt;
@@ -31,11 +28,10 @@ public final class UpdatePaymentLink extends ChannelMessage {
     private final List<String> clear;
 
     private UpdatePaymentLink(Builder builder) {
-        super(builder.channelToken);
         this.token = Fields.required(builder.token, "token");
         this.items = builder.items == null ? null : List.copyOf(builder.items);
         this.currency = builder.currency;
-        this.channelReference = builder.channelReference;
+        this.reference = builder.reference;
         this.description = builder.description;
         this.paymentProviderToken = builder.paymentProviderToken;
         this.expiresAt = builder.expiresAt;
@@ -56,9 +52,9 @@ public final class UpdatePaymentLink extends ChannelMessage {
     }
 
     @Override
-    public Map<String, Object> toBody(String channelToken) {
+    public Map<String, Object> toBody() {
         Map<String, Object> link = Fields.said(
-            "channel_reference", channelReference,
+            "reference", reference,
             "description", description,
             "payment_provider_token", paymentProviderToken,
             "currency", currency == null ? null : currency.getValue(),
@@ -67,9 +63,6 @@ public final class UpdatePaymentLink extends ChannelMessage {
             "items", Fields.each(items, Item::toBody)
         );
 
-        if (namedChannel() != null) {
-            link.put("channel_token", linkChannel(channelToken));
-        }
 
         return Fields.of(
             "token", token,
@@ -77,12 +70,12 @@ public final class UpdatePaymentLink extends ChannelMessage {
         );
     }
 
-    public static final class Builder extends ChannelMessage.Builder<Builder> {
+    public static final class Builder {
 
         private final String token;
         private List<Item> items;
         private Currency currency;
-        private String channelReference;
+        private String reference;
         private String description;
         private String paymentProviderToken;
         private String expiresAt;
@@ -104,8 +97,8 @@ public final class UpdatePaymentLink extends ChannelMessage {
             return this;
         }
 
-        public Builder channelReference(String channelReference) {
-            this.channelReference = channelReference;
+        public Builder reference(String reference) {
+            this.reference = reference;
             return this;
         }
 
@@ -136,11 +129,6 @@ public final class UpdatePaymentLink extends ChannelMessage {
          */
         public Builder clear(String... fields) {
             this.clear.addAll(Arrays.asList(fields));
-            return this;
-        }
-
-        @Override
-        protected Builder self() {
             return this;
         }
 
