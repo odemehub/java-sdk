@@ -25,6 +25,7 @@ public final class Subscription {
     private final int renewalsPaid;
     private final List<Item> items;
     private final ShippingMethod shippingMethod;
+    private final Discount discount;
     private final String subtotal;
     private final String shippingAmount;
     private final String taxAmount;
@@ -49,6 +50,7 @@ public final class Subscription {
         this.renewalsPaid = Read.integer(subscription.path("renewals_paid"));
         this.items = Read.list(subscription.path("items"), Item::fromBody);
         this.shippingMethod = ShippingMethod.in(subscription.path("shipping_method"));
+        this.discount = Discount.in(subscription.path("discount"));
         this.subtotal = Read.string(subscription.path("subtotal"));
         this.shippingAmount = Read.string(subscription.path("shipping_amount"));
         this.taxAmount = Read.string(subscription.path("tax_amount"));
@@ -152,6 +154,16 @@ public final class Subscription {
     /** The way the payer picked; null until they have, or when none was offered. */
     public ShippingMethod getShippingMethod() {
         return shippingMethod;
+    }
+
+    /**
+     * The coupon the payer put on the first payment, the only one that takes
+     * a coupon; null when they put none. The subscription's own amounts are
+     * without it: what the first payment charged is on the first renewal's
+     * amount.
+     */
+    public Discount getDiscount() {
+        return discount;
     }
 
     /** What the lines come to before tax. */

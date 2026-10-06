@@ -91,6 +91,28 @@ final class Read {
         return List.copyOf(items);
     }
 
+    /**
+     * A list the answer may genuinely not carry: null when it carries none.
+     * An element read as null — a value this version does not know — is left
+     * out.
+     */
+    static <T> List<T> optionalList(JsonNode value, Function<JsonNode, T> read) {
+        if (value == null || !value.isArray()) {
+            return null;
+        }
+
+        List<T> items = new ArrayList<>();
+        value.elements().forEachRemaining(item -> {
+            T element = read.apply(item);
+
+            if (element != null) {
+                items.add(element);
+            }
+        });
+
+        return List.copyOf(items);
+    }
+
     private static String text(JsonNode value) {
         if (value.isBoolean()) {
             return value.booleanValue() ? "1" : "";

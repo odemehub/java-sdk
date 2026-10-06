@@ -18,11 +18,10 @@ import java.util.Map;
  * known of them: it is filled in on the checkout page and the payer is asked
  * for the rest.
  *
- * <p>Opening is idempotent per reference: opening again under a
- * reference that already has an open order or subscription overwrites it with
- * what is sent and answers with the one that was there, under its own token.
- * A paid order, a subscription that has been paid, or one with a payment
- * under way is not touched; the gateway says so on {@code reference}.
+ * <p>The reference is the merchant's own and need not be unique: every
+ * opening is a new order or subscription under a new token, even under a
+ * reference sent before, and nothing already there is written over. Keep the
+ * token each answer comes back with; that is what names it from then on.
  */
 public abstract class CheckoutMessage extends Message {
 
@@ -102,7 +101,7 @@ public abstract class CheckoutMessage extends Message {
 
         protected abstract B self();
 
-        /** The reference it is known by in the calling system. It has to carry at least one digit. */
+        /** The reference it is known by in the calling system. It has to carry at least one digit, and may be sent again. */
         public B reference(String reference) {
             this.reference = reference;
             return self();

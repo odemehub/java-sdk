@@ -1,12 +1,16 @@
 package com.odemehub.response;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.odemehub.enums.AmountType;
 import com.odemehub.enums.Currency;
+import com.odemehub.enums.CurrencyType;
+import com.odemehub.enums.TaxMode;
 import java.util.List;
 
 /**
- * A payment link as it stands: what it sells, what it comes to, whether it
- * takes payments and until when, and the address it is paid at.
+ * A payment link as it stands: what it sells — its lines and what they come
+ * to, or what the payer may pick and the tax on it — in which money, whether
+ * it takes payments and until when, and the address it is paid at.
  */
 public final class PaymentLink {
 
@@ -14,11 +18,19 @@ public final class PaymentLink {
     private final String reference;
     private final String description;
     private final String paymentProviderToken;
+    private final AmountType amountType;
+    private final String itemName;
+    private final List<String> predefinedAmounts;
+    private final String taxRate;
+    private final TaxMode taxMode;
     private final List<Item> items;
     private final String subtotal;
     private final String taxAmount;
     private final String amount;
     private final Currency currency;
+    private final CurrencyType currencyType;
+    private final List<Currency> currencies;
+    private final boolean emailsPayer;
     private final boolean isActive;
     private final boolean isTest;
     private final String expiresAt;
@@ -32,11 +44,19 @@ public final class PaymentLink {
         this.reference = Read.string(link.path("reference"));
         this.description = Read.nonEmptyString(link.path("description"));
         this.paymentProviderToken = Read.nonEmptyString(link.path("payment_provider_token"));
+        this.amountType = AmountType.from(Read.optionalString(link.path("amount_type")));
+        this.itemName = Read.nonEmptyString(link.path("item_name"));
+        this.predefinedAmounts = Read.optionalList(link.path("predefined_amounts"), Read::string);
+        this.taxRate = Read.nonEmptyString(link.path("tax_rate"));
+        this.taxMode = TaxMode.from(Read.optionalString(link.path("tax_mode")));
         this.items = Read.list(link.path("items"), Item::fromBody);
-        this.subtotal = Read.string(link.path("subtotal"));
-        this.taxAmount = Read.string(link.path("tax_amount"));
-        this.amount = Read.string(link.path("amount"));
+        this.subtotal = Read.optionalString(link.path("subtotal"));
+        this.taxAmount = Read.optionalString(link.path("tax_amount"));
+        this.amount = Read.optionalString(link.path("amount"));
         this.currency = Currency.from(Read.optionalString(link.path("currency")));
+        this.currencyType = CurrencyType.from(Read.optionalString(link.path("currency_type")));
+        this.currencies = Read.optionalList(link.path("currencies"), currency -> Currency.from(Read.optionalString(currency)));
+        this.emailsPayer = Read.bool(link.path("emails_payer"));
         this.isActive = Read.bool(link.path("is_active"));
         this.isTest = Read.bool(link.path("is_test"));
         this.expiresAt = Read.nonEmptyString(link.path("expires_at"));
@@ -70,28 +90,69 @@ public final class PaymentLink {
         return paymentProviderToken;
     }
 
-    /** What the link is for. */
+    /** What the payer pays: the lines, or an amount they pick; null for a type this version does not know. */
+    public AmountType getAmountType() {
+        return amountType;
+    }
+
+    /** The name of the one line the payer pays, on a link whose amount the payer picks; null otherwise. */
+    public String getItemName() {
+        return itemName;
+    }
+
+    /** The amounts the payer picks from, on a {@code predefined} or {@code predefined_and_custom} link; null otherwise. */
+    public List<String> getPredefinedAmounts() {
+        return predefinedAmounts;
+    }
+
+    /** The tax on what the payer pays, as a percentage, on a link whose amount the payer picks; null when it carries none. */
+    public String getTaxRate() {
+        return taxRate;
+    }
+
+    /** Whether the tax rate is inside what the payer pays or added on top of it. */
+    public TaxMode getTaxMode() {
+        return taxMode;
+    }
+
+    /** What the link is for; empty on a link whose amount the payer picks. */
     public List<Item> getItems() {
         return items;
     }
 
-    /** What the lines come to before tax. */
+    /** What the lines come to before tax; null on a link whose amount the payer picks. */
     public String getSubtotal() {
         return subtotal;
     }
 
-    /** The tax the lines carry. */
+    /** The tax the lines carry; null on a link whose amount the payer picks. */
     public String getTaxAmount() {
         return taxAmount;
     }
 
-    /** What one payment on the link comes to. */
+    /** What one payment on the link comes to; null on a link whose amount the payer picks. */
     public String getAmount() {
         return amount;
     }
 
+    /** The money the link is paid in; on a {@code selectable} link, the one picked to begin with. */
     public Currency getCurrency() {
         return currency;
+    }
+
+    /** Whether the payer may pick the money; null for a type this version does not know. */
+    public CurrencyType getCurrencyType() {
+        return currencyType;
+    }
+
+    /** The money the payer may pick, the currency among them, on a {@code selectable} link; null on a {@code fixed} one. */
+    public List<Currency> getCurrencies() {
+        return currencies;
+    }
+
+    /** Whether the payer is sent an e-mail once their payment goes through. */
+    public boolean emailsPayer() {
+        return emailsPayer;
     }
 
     /** Whether it takes payments: switched on and its last day not gone by. */
@@ -136,6 +197,6 @@ public final class PaymentLink {
 
     @Override
     public String toString() {
-        return "PaymentLink[token=" + token + ", reference=" + reference + ", amount=" + amount + ", currency=" + currency + ", isActive=" + isActive + ", expiresAt=" + expiresAt + ", checkoutUrl=" + checkoutUrl + "]";
+        return "PaymentLink[token=" + token + ", reference=" + reference + ", amountType=" + amountType + ", amount=" + amount + ", currency=" + currency + ", isActive=" + isActive + ", expiresAt=" + expiresAt + ", checkoutUrl=" + checkoutUrl + "]";
     }
 }

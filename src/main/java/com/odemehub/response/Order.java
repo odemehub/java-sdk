@@ -21,6 +21,7 @@ public final class Order {
     private final OrderStatus status;
     private final List<Item> items;
     private final ShippingMethod shippingMethod;
+    private final Discount discount;
     private final String subtotal;
     private final String shippingAmount;
     private final String taxAmount;
@@ -40,6 +41,7 @@ public final class Order {
         this.status = OrderStatus.from(Read.optionalString(order.path("status")));
         this.items = Read.list(order.path("items"), Item::fromBody);
         this.shippingMethod = ShippingMethod.in(order.path("shipping_method"));
+        this.discount = Discount.in(order.path("discount"));
         this.subtotal = Read.string(order.path("subtotal"));
         this.shippingAmount = Read.string(order.path("shipping_amount"));
         this.taxAmount = Read.string(order.path("tax_amount"));
@@ -108,7 +110,12 @@ public final class Order {
         return shippingMethod;
     }
 
-    /** What the lines come to before tax. */
+    /** The coupon the payer put on the order; null when they put none. */
+    public Discount getDiscount() {
+        return discount;
+    }
+
+    /** What the lines come to before tax, the coupon taken off. */
     public String getSubtotal() {
         return subtotal;
     }
@@ -118,12 +125,12 @@ public final class Order {
         return shippingAmount;
     }
 
-    /** The tax the lines and the shipping carry. */
+    /** The tax the lines and the shipping carry, the coupon taken off. */
     public String getTaxAmount() {
         return taxAmount;
     }
 
-    /** What the order comes to, added up by the gateway. */
+    /** What the order comes to, added up by the gateway, the coupon taken off. */
     public String getAmount() {
         return amount;
     }

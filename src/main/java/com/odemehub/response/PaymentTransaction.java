@@ -11,8 +11,8 @@ import com.odemehub.enums.TransactionStatus;
  * securePayment}, {@code regularPayment}, {@code refundPayment},
  * {@code cancelPayment}, {@code retrievePayment} and by reference) say it in
  * full. A payment made at an order, a payment link or a subscription names
- * it, so a webhook about one of them can be checked against the payment it
- * names.
+ * it — one at a link names the payer's payment at it too — so a webhook
+ * about one of them can be checked against the payment it names.
  */
 public final class PaymentTransaction {
 
@@ -29,6 +29,7 @@ public final class PaymentTransaction {
     private final String createdAt;
     private final String orderToken;
     private final String paymentLinkToken;
+    private final String linkPaymentToken;
     private final String subscriptionToken;
 
     private PaymentTransaction(JsonNode transaction) {
@@ -45,6 +46,7 @@ public final class PaymentTransaction {
         this.createdAt = Read.nonEmptyString(transaction.path("created_at"));
         this.orderToken = Read.optionalString(transaction.path("order").path("token"));
         this.paymentLinkToken = Read.optionalString(transaction.path("payment_link").path("token"));
+        this.linkPaymentToken = Read.optionalString(transaction.path("link_payment").path("token"));
         this.subscriptionToken = Read.optionalString(transaction.path("subscription").path("token"));
     }
 
@@ -124,6 +126,11 @@ public final class PaymentTransaction {
     /** The payment link the payment was made on; null when it was made on none. */
     public String getPaymentLinkToken() {
         return paymentLinkToken;
+    }
+
+    /** The payer's payment at the link the payment was made on, as {@code retrieveLinkPayments} names it; null when it was made on none. */
+    public String getLinkPaymentToken() {
+        return linkPaymentToken;
     }
 
     /** The subscription whose renewal the payment paid; null when it paid none. */

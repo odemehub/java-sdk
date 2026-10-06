@@ -55,7 +55,7 @@ final class Fields {
     /**
      * A list written element by element, or null when there is none.
      */
-    static <T> List<Map<String, Object>> each(List<T> values, Function<T, Map<String, Object>> write) {
+    static <T, R> List<R> each(List<T> values, Function<T, R> write) {
         return values == null ? null : values.stream().map(write).toList();
     }
 

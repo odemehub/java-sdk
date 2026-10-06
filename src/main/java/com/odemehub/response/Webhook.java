@@ -10,10 +10,12 @@ import com.odemehub.enums.WebhookEvent;
  * under Webhook in the panel, as plain JSON signed the way every answer is.
  *
  * <p>It is a notification, never the answer. It names the thing by token —
- * and the payment beside it when money moved — and nothing else; ask the
- * gateway what became of it ({@code retrieveOrder}, {@code retrievePaymentLink},
- * {@code retrieveSubscription}, {@code retrievePayment}) and act on that. A
- * word may arrive more than once; the id tells the copies apart.
+ * with the payer's payment at it for a link, and the payment beside it when
+ * money moved — and nothing else; ask the gateway what became of it
+ * ({@code retrieveOrders}, {@code retrievePaymentLinks},
+ * {@code retrieveLinkPayments}, {@code retrieveSubscriptions},
+ * {@code retrievePayments}) and act on that. A word may arrive more than
+ * once; the id tells the copies apart.
  */
 public final class Webhook {
 
@@ -22,6 +24,7 @@ public final class Webhook {
     private final String createdAt;
     private final String orderToken;
     private final String paymentLinkToken;
+    private final String linkPaymentToken;
     private final String subscriptionToken;
     private final String transactionToken;
 
@@ -31,6 +34,7 @@ public final class Webhook {
         this.createdAt = Read.nonEmptyString(body.path("created_at"));
         this.orderToken = Read.optionalString(body.path("order").path("token"));
         this.paymentLinkToken = Read.optionalString(body.path("payment_link").path("token"));
+        this.linkPaymentToken = Read.optionalString(body.path("link_payment").path("token"));
         this.subscriptionToken = Read.optionalString(body.path("subscription").path("token"));
         this.transactionToken = Read.optionalString(body.path("transaction").path("token"));
     }
@@ -69,6 +73,11 @@ public final class Webhook {
         return paymentLinkToken;
     }
 
+    /** The payer's payment at the link, for the {@code payment_link.*} events. */
+    public String getLinkPaymentToken() {
+        return linkPaymentToken;
+    }
+
     /** The subscription, for the {@code subscription.*} events. */
     public String getSubscriptionToken() {
         return subscriptionToken;
@@ -82,6 +91,6 @@ public final class Webhook {
     @Override
     public String toString() {
         return "Webhook[id=" + id + ", event=" + event + ", orderToken=" + orderToken + ", paymentLinkToken=" + paymentLinkToken
-            + ", subscriptionToken=" + subscriptionToken + ", transactionToken=" + transactionToken + "]";
+            + ", linkPaymentToken=" + linkPaymentToken + ", subscriptionToken=" + subscriptionToken + ", transactionToken=" + transactionToken + "]";
     }
 }

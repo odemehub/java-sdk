@@ -110,8 +110,9 @@ public final class Client {
     }
 
     /**
-     * Open an order to be paid on the gateway's own page, or overwrite the
-     * open one already under the same reference. Nothing is charged here; the
+     * Open an order to be paid on the gateway's own page. Every call opens a
+     * new order under a new token, even under a reference sent before, so
+     * keep the token it comes back with. Nothing is charged here; the
      * customer is sent to the address it comes back with and pays there.
      */
     public com.odemehub.response.OrderDetails createOrder(com.odemehub.request.CreateOrder order) {
@@ -133,8 +134,9 @@ public final class Client {
     }
 
     /**
-     * Open a payment link, or overwrite the one already under the same
-     * reference. The address it comes back with is the link itself.
+     * Open a payment link. Every call opens a new link under a new token,
+     * even under a reference sent before, so keep the token it comes back
+     * with. The address it comes back with is the link itself.
      */
     public com.odemehub.response.PaymentLinkDetails createPaymentLink(com.odemehub.request.CreatePaymentLink link) {
         return com.odemehub.response.PaymentLinkDetails.fromBody(send(link));
@@ -156,10 +158,21 @@ public final class Client {
     }
 
     /**
-     * Open a subscription, or overwrite the one already under the same
-     * reference while nothing has been paid on it. The customer is sent to the
-     * address it comes back with and pays the first renewal there; the rest
-     * are taken from the card they pay with.
+     * Payments made at the team's links, each with what was paid, the link it
+     * was made at, the payer as they billed themselves and, once it is paid,
+     * the attempt that paid it. They are opened by the payers paying, never
+     * by the merchant, so they are only asked after.
+     */
+    public com.odemehub.response.LinkPaymentList retrieveLinkPayments(com.odemehub.request.RetrieveLinkPayments linkPayments) {
+        return com.odemehub.response.LinkPaymentList.fromBody(send(linkPayments));
+    }
+
+    /**
+     * Open a subscription. Every call opens a new subscription under a new
+     * token, even under a reference sent before, so keep the token it comes
+     * back with. The customer is sent to the address it comes back with and
+     * pays the first renewal there; the rest are taken from the card they pay
+     * with.
      */
     public com.odemehub.response.SubscriptionDetails createSubscription(com.odemehub.request.CreateSubscription subscription) {
         return com.odemehub.response.SubscriptionDetails.fromBody(send(subscription));

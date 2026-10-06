@@ -4,8 +4,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.odemehub.enums.PaymentStatus;
 
 /**
- * The payment that paid an order: what the merchant gives back out of or
- * asks after, and what has become of its money since.
+ * The payment that paid an order or a payment at a link: what the merchant
+ * gives back out of or asks after, and what has become of its money since.
  */
 public final class TransactionReference {
 

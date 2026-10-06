@@ -11,7 +11,8 @@ import com.odemehub.enums.TransactionStatus;
  * attempts apart and see where each got to. Where it stands is said twice on
  * purpose: the attempt's own state, and what became of the money, which can
  * move on to refunded long after the attempt is over. A payment made at an
- * order, a payment link or a subscription names it.
+ * order, a payment link or a subscription names it; one at a link names the
+ * payer's payment at it too.
  */
 public final class Transaction {
 
@@ -32,6 +33,7 @@ public final class Transaction {
     private final Conversion conversion;
     private final String orderToken;
     private final String paymentLinkToken;
+    private final String linkPaymentToken;
     private final String subscriptionToken;
     private final SavedCard savedCard;
 
@@ -53,6 +55,7 @@ public final class Transaction {
         this.conversion = Read.object(transaction.path("conversion")) == null ? null : Conversion.fromBody(transaction.path("conversion"));
         this.orderToken = Read.nonEmptyString(transaction.path("order").path("token"));
         this.paymentLinkToken = Read.nonEmptyString(transaction.path("payment_link").path("token"));
+        this.linkPaymentToken = Read.nonEmptyString(transaction.path("link_payment").path("token"));
         this.subscriptionToken = Read.nonEmptyString(transaction.path("subscription").path("token"));
         this.savedCard = SavedCard.in(transaction.path("saved_card"));
     }
@@ -153,6 +156,11 @@ public final class Transaction {
     /** The token of the payment link this attempt was at; null when it was at none. */
     public String getPaymentLinkToken() {
         return paymentLinkToken;
+    }
+
+    /** The token of the payer's payment at the link this attempt was at, as {@code retrieveLinkPayments} names it; null when it was at none. */
+    public String getLinkPaymentToken() {
+        return linkPaymentToken;
     }
 
     /** The token of the subscription this attempt paid a renewal of; null when it paid none. */
