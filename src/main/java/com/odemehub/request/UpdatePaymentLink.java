@@ -35,7 +35,7 @@ public final class UpdatePaymentLink extends Message {
     private final TaxMode taxMode;
     private final CurrencyType currencyType;
     private final List<Currency> currencies;
-    private final Boolean emailsPayer;
+    private final Boolean emailsCustomer;
     private final String expiresAt;
     private final Boolean isActive;
     private final List<String> clear;
@@ -54,7 +54,7 @@ public final class UpdatePaymentLink extends Message {
         this.taxMode = builder.taxMode;
         this.currencyType = builder.currencyType;
         this.currencies = builder.currencies == null ? null : List.copyOf(builder.currencies);
-        this.emailsPayer = builder.emailsPayer;
+        this.emailsCustomer = builder.emailsCustomer;
         this.expiresAt = builder.expiresAt;
         this.isActive = builder.isActive;
         this.clear = List.copyOf(builder.clear);
@@ -86,7 +86,7 @@ public final class UpdatePaymentLink extends Message {
             "currency", currency == null ? null : currency.getValue(),
             "currency_type", currencyType == null ? null : currencyType.getValue(),
             "currencies", Fields.each(currencies, Currency::getValue),
-            "emails_payer", emailsPayer,
+            "emails_customer", emailsCustomer,
             "expires_at", expiresAt,
             "is_active", isActive,
             "items", Fields.each(items, Item::toBody)
@@ -114,7 +114,7 @@ public final class UpdatePaymentLink extends Message {
         private TaxMode taxMode;
         private CurrencyType currencyType;
         private List<Currency> currencies;
-        private Boolean emailsPayer;
+        private Boolean emailsCustomer;
         private String expiresAt;
         private Boolean isActive;
         private final List<String> clear = new ArrayList<>();
@@ -191,9 +191,9 @@ public final class UpdatePaymentLink extends Message {
             return this;
         }
 
-        /** Whether the payer is sent an e-mail once their payment goes through. */
-        public Builder emailsPayer(boolean emailsPayer) {
-            this.emailsPayer = emailsPayer;
+        /** Whether the payer is sent an e-mail, at the address they give on the checkout page, once their payment goes through. */
+        public Builder emailsCustomer(boolean emailsCustomer) {
+            this.emailsCustomer = emailsCustomer;
             return this;
         }
 

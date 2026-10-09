@@ -34,6 +34,8 @@ public abstract class CheckoutMessage extends Message {
     private final Currency currency;
     private final String paymentProviderToken;
     private final Boolean requiresShipping;
+    private final Boolean locksCustomer;
+    private final Boolean emailsCustomer;
     private final List<String> clear;
 
     protected CheckoutMessage(Builder<?> builder) {
@@ -46,6 +48,8 @@ public abstract class CheckoutMessage extends Message {
         this.currency = builder.currency;
         this.paymentProviderToken = builder.paymentProviderToken;
         this.requiresShipping = builder.requiresShipping;
+        this.locksCustomer = builder.locksCustomer;
+        this.emailsCustomer = builder.emailsCustomer;
         this.clear = List.copyOf(builder.clear);
     }
 
@@ -66,6 +70,8 @@ public abstract class CheckoutMessage extends Message {
             "success_url", successUrl,
             "cancel_url", cancelUrl,
             "requires_shipping", requiresShipping,
+            "locks_customer", locksCustomer,
+            "emails_customer", emailsCustomer,
             "items", Fields.each(items, Item::toBody)
         );
     }
@@ -97,6 +103,8 @@ public abstract class CheckoutMessage extends Message {
         protected Currency currency;
         protected String paymentProviderToken;
         protected Boolean requiresShipping;
+        protected Boolean locksCustomer;
+        protected Boolean emailsCustomer;
         protected final List<String> clear = new ArrayList<>();
 
         protected abstract B self();
@@ -165,6 +173,27 @@ public abstract class CheckoutMessage extends Message {
          */
         public B requiresShipping(boolean requiresShipping) {
             this.requiresShipping = requiresShipping;
+            return self();
+        }
+
+        /**
+         * Whether the customer stays as sent: the checkout page asks the payer
+         * nothing about who they are and only shows it. Takes a customer with
+         * a whole billing address, and a whole shipping address too when the
+         * goods are sent.
+         */
+        public B locksCustomer(boolean locksCustomer) {
+            this.locksCustomer = locksCustomer;
+            return self();
+        }
+
+        /**
+         * Whether the customer is sent an e-mail at their billing address: on
+         * an order once it is paid, on a subscription whenever where it stands
+         * changes.
+         */
+        public B emailsCustomer(boolean emailsCustomer) {
+            this.emailsCustomer = emailsCustomer;
             return self();
         }
 

@@ -20,6 +20,9 @@ public final class Subscription {
     private final String description;
     private final String paymentProviderToken;
     private final SubscriptionStatus status;
+    private final boolean requiresShipping;
+    private final boolean locksCustomer;
+    private final boolean emailsCustomer;
     private final Period period;
     private final Integer renewalLimit;
     private final int renewalsPaid;
@@ -45,6 +48,9 @@ public final class Subscription {
         this.description = Read.nonEmptyString(subscription.path("description"));
         this.paymentProviderToken = Read.nonEmptyString(subscription.path("payment_provider_token"));
         this.status = SubscriptionStatus.from(Read.optionalString(subscription.path("status")));
+        this.requiresShipping = Read.bool(subscription.path("requires_shipping"));
+        this.locksCustomer = Read.bool(subscription.path("locks_customer"));
+        this.emailsCustomer = Read.bool(subscription.path("emails_customer"));
         this.period = Period.from(Read.optionalString(subscription.path("period")));
         this.renewalLimit = Read.optionalInteger(subscription.path("renewal_limit"));
         this.renewalsPaid = Read.integer(subscription.path("renewals_paid"));
@@ -128,6 +134,21 @@ public final class Subscription {
     /** Where it stands; null for a state this version does not know. */
     public SubscriptionStatus getStatus() {
         return status;
+    }
+
+    /** Whether the checkout page asks the payer where the goods go. */
+    public boolean requiresShipping() {
+        return requiresShipping;
+    }
+
+    /** Whether the customer stays as sent, shown and not asked on the checkout page. */
+    public boolean locksCustomer() {
+        return locksCustomer;
+    }
+
+    /** Whether the customer is sent an e-mail at their billing address. */
+    public boolean emailsCustomer() {
+        return emailsCustomer;
     }
 
     /** How often a renewal comes round. */

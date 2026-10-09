@@ -30,7 +30,7 @@ public final class PaymentLink {
     private final Currency currency;
     private final CurrencyType currencyType;
     private final List<Currency> currencies;
-    private final boolean emailsPayer;
+    private final boolean emailsCustomer;
     private final boolean isActive;
     private final boolean isTest;
     private final String expiresAt;
@@ -56,7 +56,7 @@ public final class PaymentLink {
         this.currency = Currency.from(Read.optionalString(link.path("currency")));
         this.currencyType = CurrencyType.from(Read.optionalString(link.path("currency_type")));
         this.currencies = Read.optionalList(link.path("currencies"), currency -> Currency.from(Read.optionalString(currency)));
-        this.emailsPayer = Read.bool(link.path("emails_payer"));
+        this.emailsCustomer = Read.bool(link.path("emails_customer"));
         this.isActive = Read.bool(link.path("is_active"));
         this.isTest = Read.bool(link.path("is_test"));
         this.expiresAt = Read.nonEmptyString(link.path("expires_at"));
@@ -150,9 +150,9 @@ public final class PaymentLink {
         return currencies;
     }
 
-    /** Whether the payer is sent an e-mail once their payment goes through. */
-    public boolean emailsPayer() {
-        return emailsPayer;
+    /** Whether the payer is sent an e-mail, at the address they give on the checkout page, once their payment goes through. */
+    public boolean emailsCustomer() {
+        return emailsCustomer;
     }
 
     /** Whether it takes payments: switched on and its last day not gone by. */

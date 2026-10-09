@@ -249,6 +249,7 @@ var created = client.createOrder(CreateOrder.builder()
     .items(items)
     .requiresShipping(true)
     .customer(customer)
+    .emailsCustomer(true)             // ödeme tamamlanınca fatura adresindeki e-postaya bilgilendirme gider; verilmezse gitmez
     .build());
 
 var order = created.getOrder();
@@ -257,11 +258,13 @@ order.getToken();   // siparişi sonra sorgulamak ve değiştirmek için saklay�
 return "redirect:" + order.getCheckoutUrl();
 ```
 
+**Müşteri kilidi.** `locksCustomer(true)` verilirse ödeme sayfası müşteri bilgisi sormaz; gönderdiğiniz müşteriyi değiştirilemez şekilde gösterir ve ödemeyi onunla alır. Bu durumda fatura adresi eksiksiz olmalıdır; `requiresShipping(true)` ise gönderim adresi de (gönderilmezse fatura adresi kullanılır). Eksik alan varsa geçit `ValidationException` ile reddeder.
+
 Her `createOrder` çağrısı yeni bir sipariş ve yeni bir token açar; aynı referansla tekrar çağırsanız da önceki sipariş değişmez ve istek reddedilmez. Bankada vazgeçen müşteriyi tekrar ödemeye yollamak için yeni sipariş açabilirsiniz. Açık bir siparişi değiştirmek için `updateOrder(token)` kullanın; bunun için her yanıttaki token'ı saklayın.
 
 Ödeme tamamlanınca müşteri, 3D'dekiyle aynı biçimde `successUrl` adresinize döner: aynı üç alan gelir, sonucu yine `retrievePayments()` ile sorarsınız. Müşteri ödeme sayfasında karttan kaynaklı bir hata alırsa size dönmez, sayfada kalıp başka kartla dener.
 
-`response.Order` siparişi bütünüyle taşır: `getToken()`, `getReference()`, `getDescription()`, `getPaymentProviderToken()`, `getStatus()` (`OrderStatus.OPEN` / `PAID`), `getItems()`, `getShippingMethod()` (müşterinin seçtiği, seçene kadar `null`), `getSubtotal()`, `getShippingAmount()`, `getTaxAmount()`, `getAmount()`, `getCurrency()`, `isTest()`, `getCreatedAt()`, `getCheckoutUrl()` (ödenebilir değilse `null`), ödeyen işlem `getTransaction()` (açıkken `null`), kupon `getDiscount()` ve müşteri `getCustomer()` (`getReference()` — referanssız açılan siparişte `null` —, `getBillingAddress()`, `getShippingAddress()`). Müşteri `OrderDetails` üzerinde de (`created.getCustomer()`) aynen durur; listelerde siparişin kendisindedir.
+`response.Order` siparişi bütünüyle taşır: `getToken()`, `getReference()`, `getDescription()`, `getPaymentProviderToken()`, `getStatus()` (`OrderStatus.OPEN` / `PAID`), `requiresShipping()`, `locksCustomer()`, `emailsCustomer()`, `getItems()`, `getShippingMethod()` (müşterinin seçtiği, seçene kadar `null`), `getSubtotal()`, `getShippingAmount()`, `getTaxAmount()`, `getAmount()`, `getCurrency()`, `isTest()`, `getCreatedAt()`, `getCheckoutUrl()` (ödenebilir değilse `null`), ödeyen işlem `getTransaction()` (açıkken `null`), kupon `getDiscount()` ve müşteri `getCustomer()` (`getReference()` — referanssız açılan siparişte `null` —, `getBillingAddress()`, `getShippingAddress()`). Müşteri `OrderDetails` üzerinde de (`created.getCustomer()`) aynen durur; listelerde siparişin kendisindedir.
 
 Kupon API'den gönderilmez; ödeyen kodu ödeme sayfasında girer. Kupon girildiyse `getDiscount()` kodu (`getCode()`) ve kalemlerden düşülen tutarı (`getAmount()`, siparişin para biriminde) verir, girilmediyse `null` döner. Siparişin `getSubtotal()`, `getTaxAmount()` ve `getAmount()` değerleri indirim düşülmüş hâlidir; kupon gönderim ücretinden düşülmez.
 
@@ -305,7 +308,7 @@ var link = client.createPaymentLink(CreatePaymentLink.builder()
     .reference("LINK-77")             // isteğe bağlı, en az bir rakam; verilmezse geçit verir
     .description("Atölye kaydı")
     .expiresAt("2026-12-31")          // son gün, çalışma alanınızın saat diliminde; verilmezse süresiz
-    .emailsPayer(true)                // ödeme geçince ödeyene e-posta gider; verilmezse gitmez
+    .emailsCustomer(true)             // ödeme geçince ödeyene, sayfada verdiği adrese e-posta gider; verilmezse gitmez
     .build()).getPaymentLink();
 
 link.getToken();         // linki sonra sorgulamak ve değiştirmek için saklayın
@@ -347,7 +350,7 @@ consulting.getAmount();       // null: tutarı ödeyen seçer
 consulting.getCurrencies();   // [TRY, USD, EUR]
 ```
 
-`response.PaymentLink`: `getToken()`, `getReference()`, `getDescription()`, `getPaymentProviderToken()`, `getAmountType()`, `getItemName()`, `getPredefinedAmounts()`, `getTaxRate()`, `getTaxMode()`, `getItems()`, `getSubtotal()`, `getTaxAmount()`, `getAmount()`, `getCurrency()`, `getCurrencyType()`, `getCurrencies()`, `emailsPayer()`, `isActive()` (açık ve son günü geçmemiş), `isTest()`, `getExpiresAt()` (son an, ISO 8601 UTC), `getCheckoutUrl()` (ödenemiyorsa `null`), `getCreatedAt()`; sorgu yanıtında ayrıca `getTransactions()` (son 50 deneme), `getTransactionsCount()` ve `successful()`. Tutarı ödeyenin seçtiği linkte `getSubtotal()`, `getTaxAmount()` ve `getAmount()` `null` döner, `getItems()` boştur; `getItemName()` ve `getPredefinedAmounts()` kullanılmayan tipte `null`'dır. `getCurrencies()` `SELECTABLE` linkte `currency` dahil listedir, `FIXED` linkte `null`'dır.
+`response.PaymentLink`: `getToken()`, `getReference()`, `getDescription()`, `getPaymentProviderToken()`, `getAmountType()`, `getItemName()`, `getPredefinedAmounts()`, `getTaxRate()`, `getTaxMode()`, `getItems()`, `getSubtotal()`, `getTaxAmount()`, `getAmount()`, `getCurrency()`, `getCurrencyType()`, `getCurrencies()`, `emailsCustomer()`, `isActive()` (açık ve son günü geçmemiş), `isTest()`, `getExpiresAt()` (son an, ISO 8601 UTC), `getCheckoutUrl()` (ödenemiyorsa `null`), `getCreatedAt()`; sorgu yanıtında ayrıca `getTransactions()` (son 50 deneme), `getTransactionsCount()` ve `successful()`. Tutarı ödeyenin seçtiği linkte `getSubtotal()`, `getTaxAmount()` ve `getAmount()` `null` döner, `getItems()` boştur; `getItemName()` ve `getPredefinedAmounts()` kullanılmayan tipte `null`'dır. `getCurrencies()` `SELECTABLE` linkte `currency` dahil listedir, `FIXED` linkte `null`'dır.
 
 ```java
 import com.odemehub.request.RetrievePaymentLinks;
@@ -407,6 +410,7 @@ var subscription = client.createSubscription(CreateSubscription.builder()
     .items(List.of(Item.builder().name("Premium üyelik").unitAmount("149.90").quantity(1).taxRate("20").build()))
     .successUrl("https://magazam.com/tesekkurler")
     .customer(Customer.builder().reference("musteri-88").build())   // referans zorunlu
+    .emailsCustomer(true)               // her durum değişiminde fatura adresindeki e-postaya bilgilendirme gider
     .build()).getSubscription();
 
 subscription.getToken(); // aboneliği sonra sorgulamak ve değiştirmek için saklayın
@@ -435,6 +439,8 @@ subscription.getCustomer().getReference();
 ```
 
 `RetrieveSubscriptions.byReference(...)`, `between(...)` ve `latest()` siparişteki gibi çalışır.
+
+`locksCustomer(true)` siparişteki gibi çalışır; yanıt da siparişteki gibi `requiresShipping()`, `locksCustomer()` ve `emailsCustomer()` taşır. `emailsCustomer(true)` açıkken dönem ödemesi alınamazsa ödeme sayfasının bağlantısı doğrudan müşteriye gider, size ayrıca e-posta gelmez.
 
 Ödeyen ilk ödemede kupon girdiyse `getDiscount()` o kuponu (`getCode()`, `getAmount()`) verir, girmediyse `null` döner. Kupon yalnız ilk ödemeye uygulanır: aboneliğin kendi `getSubtotal()`, `getTaxAmount()` ve `getAmount()` değerleri indirimsizdir, ilk ödemede çekilen tutar ilk dönemin `getRenewal().getAmount()` değerindedir.
 
@@ -653,6 +659,11 @@ refund.getRefund().getType();     // RefundType.REFUND
 refund.getRefund().getAmount();   // 100.00
 refund.getTransaction().getPaymentStatus();   // PaymentStatus.PARTIALLY_REFUNDED
 ```
+
+## 1.0.3'teki değişiklikler
+
+- **Müşteri kilidi ve müşteriye e-posta:** `CreateOrder`, `UpdateOrder`, `CreateSubscription` ve `UpdateSubscription` builder'larında `locksCustomer` ve `emailsCustomer`. `response.Order` ve `response.Subscription`'da `requiresShipping()`, `locksCustomer()` ve `emailsCustomer()`.
+- **Kırıcı: ödeme linkinde `emailsPayer` → `emailsCustomer`.** `CreatePaymentLink` ve `UpdatePaymentLink` builder'larında ve `PaymentLink` yanıtında alanın adı değişti; geçit eski `emails_payer` adını artık kabul etmez.
 
 ## 1.0.2'deki değişiklikler
 

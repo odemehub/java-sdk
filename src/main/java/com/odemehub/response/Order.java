@@ -19,6 +19,9 @@ public final class Order {
     private final String description;
     private final String paymentProviderToken;
     private final OrderStatus status;
+    private final boolean requiresShipping;
+    private final boolean locksCustomer;
+    private final boolean emailsCustomer;
     private final List<Item> items;
     private final ShippingMethod shippingMethod;
     private final Discount discount;
@@ -39,6 +42,9 @@ public final class Order {
         this.description = Read.nonEmptyString(order.path("description"));
         this.paymentProviderToken = Read.nonEmptyString(order.path("payment_provider_token"));
         this.status = OrderStatus.from(Read.optionalString(order.path("status")));
+        this.requiresShipping = Read.bool(order.path("requires_shipping"));
+        this.locksCustomer = Read.bool(order.path("locks_customer"));
+        this.emailsCustomer = Read.bool(order.path("emails_customer"));
         this.items = Read.list(order.path("items"), Item::fromBody);
         this.shippingMethod = ShippingMethod.in(order.path("shipping_method"));
         this.discount = Discount.in(order.path("discount"));
@@ -97,6 +103,21 @@ public final class Order {
     /** Where the order stands: open until it is paid, then paid; null for a state this version does not know. */
     public OrderStatus getStatus() {
         return status;
+    }
+
+    /** Whether the checkout page asks the payer where the goods go. */
+    public boolean requiresShipping() {
+        return requiresShipping;
+    }
+
+    /** Whether the customer stays as sent, shown and not asked on the checkout page. */
+    public boolean locksCustomer() {
+        return locksCustomer;
+    }
+
+    /** Whether the customer is sent an e-mail at their billing address. */
+    public boolean emailsCustomer() {
+        return emailsCustomer;
     }
 
     /** What the order is made up of. */
