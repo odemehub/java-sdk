@@ -15,7 +15,7 @@ import java.util.Map;
  */
 public final class CreateSavedCard extends Message {
 
-    private final Customer customer;
+    private final PaymentCustomer customer;
     private final Card card;
     private final String paymentProviderToken;
 
@@ -48,7 +48,7 @@ public final class CreateSavedCard extends Message {
 
     public static final class Builder {
 
-        private Customer customer;
+        private PaymentCustomer customer;
         private Card card;
         private String paymentProviderToken;
 
@@ -56,7 +56,7 @@ public final class CreateSavedCard extends Message {
         }
 
         /** Who the card belongs to: the reference and the whole billing address, both required. */
-        public Builder customer(Customer customer) {
+        public Builder customer(PaymentCustomer customer) {
             this.customer = customer;
             return this;
         }

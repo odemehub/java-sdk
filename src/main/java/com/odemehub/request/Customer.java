@@ -3,19 +3,16 @@ package com.odemehub.request;
 import java.util.Map;
 
 /**
- * The customer a payment is made for, an order or a subscription is opened
- * for, or a card is kept for: the merchant's own key for them, where they
- * are billed and, for goods, where the goods go.
+ * The customer an order or a subscription is opened for: the merchant's own
+ * key for them, where they are billed and, for goods, where the goods go.
+ * Any of the three parts may be given; what is left out is asked on the
+ * checkout page. Payments and kept cards take a {@link PaymentCustomer}
+ * instead.
  *
  * <p>The reference is what makes them one of the team's customers: the
  * customer is written under it once a payment for them goes through, and
  * their cards are kept for them and found again by it. It may be left out of
- * a payment or an order, and the payer is then nobody the team keeps; but a
- * payment that keeps its card, a card kept on its own and a subscription
- * have to carry it.
- *
- * <p>Payments and kept cards take the reference and the whole billing
- * address only; orders and subscriptions take any of the three parts.
+ * an order; a subscription has to carry it.
  */
 public final class Customer {
 
@@ -62,7 +59,7 @@ public final class Customer {
             return this;
         }
 
-        /** Where the goods go. Orders and subscriptions only. */
+        /** Where the goods go. */
         public Builder shippingAddress(Address shippingAddress) {
             this.shippingAddress = shippingAddress;
             return this;

@@ -6,13 +6,13 @@
 
     <groupId>com.odemehub</groupId>
     <artifactId>java-sdk</artifactId>
-    <version>1.0.3</version>
+    <version>1.0.4</version>
     <packaging>jar</packaging>
 
     <name>ödemehub Java SDK</name>
     <description>ödemehub ödeme geçidi için Java istemcisi.</description>
 
-    <url>https://github.com/odemehub/java-sdk</url>
+    <url>https://dev.odemehub.com/</url>
 
     <licenses>
         <license>

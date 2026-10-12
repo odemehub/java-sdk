@@ -4,6 +4,8 @@
 
 İstemci her isteği takımınızın gizli anahtarıyla imzalar, gelen her yanıtın imzasını doğrular. Siz imza, başlık ya da JSON ayrıntılarıyla uğraşmazsınız. İstekler Java'nın kendi `HttpClient`'ıyla gider; tek bağımlılık JSON için Jackson'dır.
 
+Uç noktaların, alanların ve akışların ayrıntılı anlatımı geliştirici dokümantasyonundadır: [dev.odemehub.com](https://dev.odemehub.com/).
+
 ## Kurulum
 
 Java 17 ve üzeri gerekir.
@@ -14,26 +16,28 @@ Maven:
 <dependency>
     <groupId>com.odemehub</groupId>
     <artifactId>java-sdk</artifactId>
-    <version>1.0.2</version>
+    <version>1.0.4</version>
 </dependency>
 ```
 
 Gradle:
 
 ```groovy
-implementation 'com.odemehub:java-sdk:1.0.2'
+implementation 'com.odemehub:java-sdk:1.0.4'
 ```
 
 ## Yapılandırma
 
 Üç bilgiye ihtiyacınız var. Hepsi paneldeki **Entegrasyon** sayfasındadır (menünün en altında): API anahtarı, gizli anahtar ve Çalışma Alanı Kimliğiniz. Ödeme hesaplarınızın token'ları da oradadır.
 
+Entegrasyonu sandbox'ta (`https://sandbox.odemehub.com`) geliştirin; sandbox'ta hesap açın ve bilgileri oradaki panelden alın. Canlıya çıkarken `app.odemehub.com` üzerinde açtığınız hesabın bilgileriyle `baseUrl`'i `https://app.odemehub.com` yapın.
+
 ```java
 import com.odemehub.Client;
 import com.odemehub.Options;
 
 Client client = new Client(Options.builder()
-    .baseUrl("https://app.odemehub.com")
+    .baseUrl("https://sandbox.odemehub.com")
     .team("4829301756")                                   // Çalışma Alanı Kimliğiniz
     .apiKey(System.getenv("ODEMEHUB_API_KEY"))
     .apiSecret(System.getenv("ODEMEHUB_API_SECRET"))
@@ -83,28 +87,36 @@ Referans sizin numaranızdır ve tekil değildir; sipariş, abonelik ve link ayn
 
 ## Müşteri
 
-Müşteri üç parçadan oluşur: sizdeki referansı (`reference`), fatura adresi (`billingAddress`) ve teslimat adresi (`shippingAddress`). Adreslerde ad, soyad, e-posta, telefon, adres, ilçe, il ve ülke vardır; şirket adına alışverişte fatura adresine `companyTitle`, `taxNumber` ve `taxOffice` üçü birlikte eklenir.
+Müşteri en çok üç parçadan oluşur: sizdeki referansı (`reference`), fatura adresi (`billingAddress`) ve teslimat adresi (`shippingAddress`). Ödeme ve kart saklama müşteriyi `PaymentCustomer` ile alır: yalnızca referans ve fatura adresi. Sipariş ve abonelik `Customer` alır; teslimat adresi yalnızca onda vardır. Adreslerde ad, soyad, e-posta, telefon, adres, ilçe, il ve ülke vardır; şirket adına alışverişte fatura adresine `companyTitle`, `taxNumber` ve `taxOffice` üçü birlikte eklenir.
 
 ```java
 import com.odemehub.request.Address;
 import com.odemehub.request.Customer;
+import com.odemehub.request.PaymentCustomer;
 
-Customer customer = Customer.builder()
+Address billingAddress = Address.builder()
+    .firstname("Ahmet")
+    .lastname("Yılmaz")
+    .email("ahmet@ornek.com")
+    .phone("05551112233")
+    .address("Kızılırmak Mah. Dumlupınar Blv. No:3")
+    .district("Çankaya")
+    .province("Ankara")
+    .country("Türkiye")
+    .build();
+
+PaymentCustomer customer = PaymentCustomer.builder()     // ödeme ve kart saklama
     .reference("musteri-88")   // müşterinin sizdeki referansı
-    .billingAddress(Address.builder()
-        .firstname("Ahmet")
-        .lastname("Yılmaz")
-        .email("ahmet@ornek.com")
-        .phone("05551112233")
-        .address("Kızılırmak Mah. Dumlupınar Blv. No:3")
-        .district("Çankaya")
-        .province("Ankara")
-        .country("Türkiye")
-        .build())
+    .billingAddress(billingAddress)
+    .build();
+
+Customer orderCustomer = Customer.builder()              // sipariş ve abonelik
+    .reference("musteri-88")
+    .billingAddress(billingAddress)
     .build();
 ```
 
-- **Ödeme ve kart saklama:** fatura adresinin sekiz alanı da zorunludur; teslimat adresi gönderilmez. Referans, kart saklayan ya da kayıtlı kartla yapılan ödemede ve kart saklamada zorunludur.
+- **Ödeme ve kart saklama:** fatura adresinin sekiz alanı da zorunludur; teslimat adresi gönderilmez (`PaymentCustomer` onu taşımaz). Referans, kart saklayan ya da kayıtlı kartla yapılan ödemede ve kart saklamada zorunludur.
 - **Sipariş ve abonelik:** elinizde ne varsa onu gönderin; ödeme sayfası eksikleri müşteriye sorar. Abonelikte referans zorunludur; siparişte referans verilmezse ödeyen müşteri listenize yazılmaz.
 - **Müşteri listesi:** referans gönderdiğiniz ödeme başarılı olunca geçit müşteriyi o referansla çalışma alanınızın müşteri listesine yazar ya da günceller; başarısız ödeme müşteriye dokunmaz. Referanssız ödeme yine alınır ama müşteri kaydedilmez ve kart saklanamaz. Saklanan kart müşteriye bağlanır; müşterinin son ödeme yaptığı kart varsayılan kartı olur.
 
@@ -248,7 +260,7 @@ var created = client.createOrder(CreateOrder.builder()
     .cancelUrl("https://magazam.com/sepet")
     .items(items)
     .requiresShipping(true)
-    .customer(customer)
+    .customer(orderCustomer)
     .emailsCustomer(true)             // ödeme tamamlanınca fatura adresindeki e-postaya bilgilendirme gider; verilmezse gitmez
     .build());
 
@@ -462,7 +474,7 @@ cancelled.getCancelledAt();
 
 ## Webhook
 
-Sipariş ödendiğinde, link ödemesi alındığında, abonelik durum değiştirdiğinde, API ödemesi bittiğinde ve bir ödeme iade ya da iptal edildiğinde geçidin **kendi sunucusu** imzalı bir JSON POST gönderir. Müşteri sekmeyi kapatıp `callbackUrl` / `successUrl` adresinize hiç dönmese de bu bildirim gelir. Adresler kodda verilmez; panelde **Ayarlar → Webhook** sayfasında olay ve adres seçilerek tanımlanır.
+Sipariş ödendiğinde, link ödemesi alındığında, abonelik durum değiştirdiğinde, API ödemesi bittiğinde ve bir ödeme iade ya da iptal edildiğinde geçidin **kendi sunucusu** imzalı bir JSON POST gönderir. Müşteri sekmeyi kapatıp `callbackUrl` / `successUrl` adresinize hiç dönmese de bu bildirim gelir. Adresler kodda verilmez; panelde **Ödeme Ayarları → Webhook** sayfasında tanımlanır. Bir adres birden çok olayı dinleyebilir; **Tüm olaylar** seçilirse her olay o adrese gelir. Aynı olay birden çok adreste seçilirse bildirim her adrese ayrı gider.
 
 | Kaynak | Olaylar |
 | --- | --- |
@@ -518,7 +530,9 @@ public ResponseEntity<Void> webhook(
 }
 ```
 
-Link olaylarında `getPaymentLinkToken()` ile birlikte `getLinkPaymentToken()` da gelir. Abonelik ve link ödemelerinin iade/iptal olaylarında `getTransactionToken()` da gelir; `retrievePayments()` yanıtındaki `getOrderToken()` / `getPaymentLinkToken()` / `getLinkPaymentToken()` / `getSubscriptionToken()` ödemenin gerçekten o kaynağa ait olduğunu gösterir. Yalnızca doğrulamak için `client.verifyWebhook(...)` `boolean` döner. 2xx dışında bir yanıt (ya da yanıtsızlık) başarısız sayılır; geçit 60 sn, 5 dk, 15 dk ve 30 dk arayla toplam 5 kez dener ve yönlendirmeleri izlemez. Ulaşmayan bildirimler panelde ilgili kaydın sayfasında HTTP kodu ve yanıtıyla listelenir.
+Link olaylarında `getPaymentLinkToken()` ile birlikte `getLinkPaymentToken()` da gelir. Abonelik ve link ödemelerinin iade/iptal olaylarında `getTransactionToken()` da gelir; `retrievePayments()` yanıtındaki `getOrderToken()` / `getPaymentLinkToken()` / `getLinkPaymentToken()` / `getSubscriptionToken()` ödemenin gerçekten o kaynağa ait olduğunu gösterir. Yalnızca doğrulamak için `client.verifyWebhook(...)` `boolean` döner.
+
+İlk gönderim olaydan 30 saniye sonra yapılır. 2xx dışında bir yanıt (ya da yanıtsızlık) başarısız sayılır; geçit 60 sn, 5 dk, 15 dk ve 30 dk arayla toplam 5 kez dener ve yönlendirmeleri izlemez. Adres panelden kapatılır ya da silinirse otomatik gönderimler durur. Ulaşmayan bildirimler panelde ilgili kaydın sayfasında HTTP kodu ve yanıtıyla listelenir; denemeleri biten bildirim oradan elle yeniden gönderilebilir. Elle gönderim beklemeden, aynı `id` ve gövdeyle, bildirim kaydındaki adrese gider.
 
 ## Ödeme hangi hesaptan geçer
 
@@ -659,6 +673,14 @@ refund.getRefund().getType();     // RefundType.REFUND
 refund.getRefund().getAmount();   // 100.00
 refund.getTransaction().getPaymentStatus();   // PaymentStatus.PARTIALLY_REFUNDED
 ```
+
+## 1.0.4'teki değişiklikler
+
+- **Sandbox'la başlayan kurulum:** README ve `Options.baseUrl` açıklaması entegrasyonu `https://sandbox.odemehub.com` üzerinde geliştirip canlıya çıkarken `baseUrl`'i `https://app.odemehub.com` yapmayı anlatır.
+- **`com.odemehub.request.PaymentCustomer`:** ödemenin ve kart saklamanın müşterisi; yalnızca `reference` ve `billingAddress` (zorunlu) taşır.
+- **Webhook anlatımı güncellendi:** menü **Ödeme Ayarları → Webhook**, bir adres birden çok olay (ya da **Tüm olaylar**), ilk gönderim olaydan 30 saniye sonra, kapatılan ya da silinen adrese otomatik gönderim yapılmaz, elle yeniden gönderim bildirim kaydındaki adrese gider.
+- **Dokümantasyon bağlantısı:** README ve `pom.xml` `<url>` geliştirici dokümantasyonunu ([dev.odemehub.com](https://dev.odemehub.com/)) gösterir; kurulum örnekleri 1.0.4'ü gösterir.
+- **Kırıcı: `RegularPayment`, `SecurePayment` ve `CreateSavedCard` builder'larında `customer(...)` artık `Customer` değil `PaymentCustomer` alır.** Geçit ödemede ve kart saklamada teslimat adresini 422 ile reddettiği için `shippingAddress` taşıyabilen `Customer` bu isteklerden çıktı. Ödeme kodunda `Customer.builder()` → `PaymentCustomer.builder()`; `billingAddress` verilmezse `build()` hata fırlatır. Sipariş ve abonelik `Customer` almaya devam eder.
 
 ## 1.0.3'teki değişiklikler
 

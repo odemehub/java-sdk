@@ -18,7 +18,7 @@ public abstract class Payment extends Message {
     private final String amount;
     private final int installmentNumber;
     private final String ip;
-    private final Customer customer;
+    private final PaymentCustomer customer;
     private final Card card;
     private final String savedCardToken;
     private final Currency currency;
@@ -70,7 +70,7 @@ public abstract class Payment extends Message {
         private String amount;
         private Integer installmentNumber;
         private String ip;
-        private Customer customer;
+        private PaymentCustomer customer;
         private Card card;
         private String savedCardToken;
         private Currency currency;
@@ -117,7 +117,7 @@ public abstract class Payment extends Message {
          * address. A payment that keeps its card, or pays with a kept one,
          * needs the reference.
          */
-        public B customer(Customer customer) {
+        public B customer(PaymentCustomer customer) {
             this.customer = customer;
             return self();
         }

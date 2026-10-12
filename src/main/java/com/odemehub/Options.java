@@ -31,7 +31,7 @@ public final class Options {
         return new Builder();
     }
 
-    /** The address the application is served from, e.g. https://app.odemehub.com. */
+    /** The address the application is served from, e.g. https://sandbox.odemehub.com while building and https://app.odemehub.com once live. */
     public String getBaseUrl() {
         return baseUrl;
     }
