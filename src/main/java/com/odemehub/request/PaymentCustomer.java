@@ -4,7 +4,9 @@ import java.util.Map;
 
 /**
  * The customer a payment is made for or a card is kept for: the whole
- * billing address and the merchant's own key for them. Nothing goes to a
+ * billing address, or what is known of it where the team fills the rest
+ * from its default payer (Varsayılan Ödeyen), and the merchant's own key
+ * for them. Nothing goes to a
  * shipping address here; the gateway turns down a payment or a kept card
  * that names one.
  *
@@ -47,7 +49,7 @@ public final class PaymentCustomer {
             return this;
         }
 
-        /** Where the customer is billed: all eight person fields, the three company fields together or not at all. */
+        /** Where the customer is billed: all eight person fields, unless the team fills what is left out from its default payer; the three company fields together or not at all. */
         public Builder billingAddress(Address billingAddress) {
             this.billingAddress = billingAddress;
             return this;

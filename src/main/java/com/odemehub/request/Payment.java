@@ -114,7 +114,8 @@ public abstract class Payment extends Message {
 
         /**
          * Who is paying: the reference, if there is one, and the whole billing
-         * address. A payment that keeps its card, or pays with a kept one,
+         * address, or what is known of it where the team fills the rest from
+         * its default payer. A payment that keeps its card, or pays with a kept one,
          * needs the reference.
          */
         public B customer(PaymentCustomer customer) {

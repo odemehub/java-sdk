@@ -4,9 +4,10 @@ import java.util.Map;
 
 /**
  * Where a customer is billed, or where the goods go. A payment and a kept
- * card need the whole of the eight person fields on the billing address; an
- * order or a subscription takes whatever is known and asks the payer for the
- * rest on the checkout page.
+ * card need the whole of the eight person fields on the billing address,
+ * unless the team fills what is left out from its default payer (Varsayılan
+ * Ödeyen); an order or a subscription takes whatever is known and asks the
+ * payer for the rest on the checkout page.
  *
  * <p>The three company fields are read on the billing address only, and
  * always together: the gateway turns down an address that names one of them

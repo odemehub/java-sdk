@@ -116,7 +116,7 @@ Customer orderCustomer = Customer.builder()              // sipariş ve abonelik
     .build();
 ```
 
-- **Ödeme ve kart saklama:** fatura adresinin sekiz alanı da zorunludur; teslimat adresi gönderilmez (`PaymentCustomer` onu taşımaz). Referans, kart saklayan ya da kayıtlı kartla yapılan ödemede ve kart saklamada zorunludur.
+- **Ödeme ve kart saklama:** fatura adresinin sekiz alanı da zorunludur (panelde Varsayılan Ödeyen açıksa eksik bırakılabilir); teslimat adresi gönderilmez (`PaymentCustomer` onu taşımaz). Referans, kart saklayan ya da kayıtlı kartla yapılan ödemede ve kart saklamada zorunludur.
 - **Sipariş ve abonelik:** elinizde ne varsa onu gönderin; ödeme sayfası eksikleri müşteriye sorar. Abonelikte referans zorunludur; siparişte referans verilmezse ödeyen müşteri listenize yazılmaz.
 - **Müşteri listesi:** referans gönderdiğiniz ödeme başarılı olunca geçit müşteriyi o referansla çalışma alanınızın müşteri listesine yazar ya da günceller; başarısız ödeme müşteriye dokunmaz. Referanssız ödeme yine alınır ama müşteri kaydedilmez ve kart saklanamaz. Saklanan kart müşteriye bağlanır; müşterinin son ödeme yaptığı kart varsayılan kartı olur.
 
@@ -627,7 +627,7 @@ import com.odemehub.request.RetrieveSavedCards;
 import com.odemehub.request.UpdateSavedCard;
 
 // Ödeme sırasında saklamak için: karta shouldSave(true) verin, müşteriye referans verin.
-// Ödeme olmadan saklamak için (müşteride referans ve fatura adresinin tamamı zorunlu);
+// Ödeme olmadan saklamak için (müşteride referans ve fatura adresinin tamamı zorunlu; Varsayılan Ödeyen açıksa adres eksik olabilir);
 // sağlayıcı kartı alınca müşteri gönderdiğiniz bilgilerle listenize yazılır:
 var kept = client.createSavedCard(CreateSavedCard.builder().customer(customer).card(card).build());
 kept.getSavedCard();   // saklanamadıysa null; nedeni getResult().getMessage()
