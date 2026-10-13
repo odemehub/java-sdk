@@ -30,7 +30,7 @@ public abstract class Payment extends Message {
         this.amount = Fields.required(builder.amount, "amount");
         this.installmentNumber = Fields.required(builder.installmentNumber, "installmentNumber");
         this.ip = Fields.required(builder.ip, "ip");
-        this.customer = Fields.required(builder.customer, "customer");
+        this.customer = builder.customer;
         this.card = builder.card;
         this.savedCardToken = builder.savedCardToken;
         this.currency = builder.currency;
@@ -40,7 +40,8 @@ public abstract class Payment extends Message {
 
     /**
      * The request body. The signature is not part of it; the client signs the
-     * body as a whole and sends the signature in a header of its own.
+     * body as a whole and sends the signature in a header of its own. A
+     * customer or a card that is not given is left out altogether.
      */
     @Override
     public Map<String, Object> toBody() {
@@ -54,9 +55,12 @@ public abstract class Payment extends Message {
                 "installment_number", installmentNumber,
                 "ip", ip,
                 "saved_card_token", savedCardToken
-            ),
-            "customer", customer.toBody()
+            )
         );
+
+        if (customer != null) {
+            body.put("customer", customer.toBody());
+        }
 
         if (card != null) {
             body.put("card", card.toBody());
@@ -116,7 +120,9 @@ public abstract class Payment extends Message {
          * Who is paying: the reference, if there is one, and the whole billing
          * address, or what is known of it where the team fills the rest from
          * its default payer. A payment that keeps its card, or pays with a kept one,
-         * needs the reference.
+         * needs the reference. Left out, it is not sent: the gateway takes a
+         * payment without a customer only where the team uses a default
+         * payer, and turns it down on {@code customer} otherwise.
          */
         public B customer(PaymentCustomer customer) {
             this.customer = customer;

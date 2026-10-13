@@ -97,8 +97,8 @@ public final class Card {
         /**
          * Whether the customer asked for this card to be kept after a
          * successful payment, so they can pay with it again without typing it
-         * out. Needs a customer reference to keep it under, a plan that covers
-         * saved cards and an account whose provider keeps cards; the gateway
+         * out. Needs a customer reference to keep it under, the Kayıtlı Kartlar
+         * module on and an account whose provider keeps cards; the gateway
          * turns the payment down on this field otherwise. Read only for
          * payments; left out, it is not sent.
          */

@@ -16,14 +16,14 @@ Maven:
 <dependency>
     <groupId>com.odemehub</groupId>
     <artifactId>java-sdk</artifactId>
-    <version>1.0.4</version>
+    <version>1.0.5</version>
 </dependency>
 ```
 
 Gradle:
 
 ```groovy
-implementation 'com.odemehub:java-sdk:1.0.4'
+implementation 'com.odemehub:java-sdk:1.0.5'
 ```
 
 ## Yapılandırma
@@ -116,7 +116,8 @@ Customer orderCustomer = Customer.builder()              // sipariş ve abonelik
     .build();
 ```
 
-- **Ödeme ve kart saklama:** fatura adresinin sekiz alanı da zorunludur (panelde Varsayılan Ödeyen açıksa eksik bırakılabilir); teslimat adresi gönderilmez (`PaymentCustomer` onu taşımaz). Referans, kart saklayan ya da kayıtlı kartla yapılan ödemede ve kart saklamada zorunludur.
+- **Ödeme ve kart saklama:** fatura adresinin sekiz alanı da zorunludur; teslimat adresi gönderilmez (`PaymentCustomer` onu taşımaz). Referans, kart saklayan ya da kayıtlı kartla yapılan ödemede ve kart saklamada zorunludur.
+- **Varsayılan Ödeyen:** panelde **Ödeme Ayarları → Varsayılan Ödeyen** açıksa fatura adresinin alanlarını eksik bırakabilir, `billingAddress`'i hiç vermeyebilirsiniz; ödemede `customer(...)` da verilmeyebilir (kart saklamada referans yine zorunludur). Eksikler sağlayıcıya varsayılan ödeyenden gider, müşteri kaydına gitmez. SDK bunu denetlemez: ayar kapalıyken eksik adresi geçit `ValidationException` ile reddeder.
 - **Sipariş ve abonelik:** elinizde ne varsa onu gönderin; ödeme sayfası eksikleri müşteriye sorar. Abonelikte referans zorunludur; siparişte referans verilmezse ödeyen müşteri listenize yazılmaz.
 - **Müşteri listesi:** referans gönderdiğiniz ödeme başarılı olunca geçit müşteriyi o referansla çalışma alanınızın müşteri listesine yazar ya da günceller; başarısız ödeme müşteriye dokunmaz. Referanssız ödeme yine alınır ama müşteri kaydedilmez ve kart saklanamaz. Saklanan kart müşteriye bağlanır; müşterinin son ödeme yaptığı kart varsayılan kartı olur.
 
@@ -432,7 +433,7 @@ return "redirect:" + subscription.getCheckoutUrl();
 
 Siparişte olduğu gibi her `createSubscription` çağrısı yeni bir abonelik ve yeni bir token açar; aynı referansla tekrar çağırmak önceki aboneliği değiştirmez.
 
-Aboneliğin açılabilmesi için ödeme hesabının kart saklayabiliyor ve 3D ödeme alabiliyor olması, planınızın da kayıtlı kartları kapsaması gerekir; aksi halde istek `subscription.payment_provider_token` alanında reddedilir.
+Aboneliğin açılabilmesi için ödeme hesabının kart saklayabiliyor ve 3D ödeme alabiliyor olması, **Kayıtlı Kartlar** modülünün de açık olması gerekir; aksi halde istek `subscription.payment_provider_token` alanında reddedilir.
 
 Dönem bitince yeni dönem müşterinin varsayılan kartından çekilir. Banka kabul etmezse çekim beş kez denenir; bu sırada abonelik `active` kalır. Son deneme de olmazsa abonelik `past_due` olur ve panelde tanımlı webhook adresinize `subscription.past_due` gider; o dönemin ödenebileceği adres `getCheckoutUrl()`'dedir, müşterinize siz iletirsiniz. Müşteri ödediği anda abonelik kaldığı yerden devam eder.
 
@@ -618,7 +619,7 @@ Bazı sağlayıcılar vade farkını kendileri ekler; geçit bunu bilir ve gerek
 
 ## Kayıtlı kartlar
 
-Müşterinin kartını saklayıp sonraki ödemelerde numara sormadan çekim yapabilirsiniz. Kart, müşterinin sizdeki referansıyla müşteriye bağlanır; planınızın kayıtlı kartları kapsaması ve ödeme hesabının kart saklayabilmesi gerekir.
+Müşterinin kartını saklayıp sonraki ödemelerde numara sormadan çekim yapabilirsiniz. Kart, müşterinin sizdeki referansıyla müşteriye bağlanır; **Kayıtlı Kartlar** modülünün açık olması ve ödeme hesabının kart saklayabilmesi gerekir.
 
 ```java
 import com.odemehub.request.CreateSavedCard;
@@ -627,7 +628,7 @@ import com.odemehub.request.RetrieveSavedCards;
 import com.odemehub.request.UpdateSavedCard;
 
 // Ödeme sırasında saklamak için: karta shouldSave(true) verin, müşteriye referans verin.
-// Ödeme olmadan saklamak için (müşteride referans ve fatura adresinin tamamı zorunlu; Varsayılan Ödeyen açıksa adres eksik olabilir);
+// Ödeme olmadan saklamak için (müşteride referans ve fatura adresinin tamamı zorunlu; Varsayılan Ödeyen açıksa adres eksik olabilir ya da hiç verilmeyebilir);
 // sağlayıcı kartı alınca müşteri gönderdiğiniz bilgilerle listenize yazılır:
 var kept = client.createSavedCard(CreateSavedCard.builder().customer(customer).card(card).build());
 kept.getSavedCard();   // saklanamadıysa null; nedeni getResult().getMessage()
@@ -673,6 +674,12 @@ refund.getRefund().getType();     // RefundType.REFUND
 refund.getRefund().getAmount();   // 100.00
 refund.getTransaction().getPaymentStatus();   // PaymentStatus.PARTIALLY_REFUNDED
 ```
+
+## 1.0.5'teki değişiklikler
+
+- **Varsayılan Ödeyen: fatura adresi isteğe bağlı.** `PaymentCustomer.builder().build()` `billingAddress` verilmeden de kurulur; verilmeyen adres istekte gönderilmez. `RegularPayment` ve `SecurePayment` builder'larında `customer(...)` artık zorunlu değil; verilmezse `customer` gönderilmez. Panelde Varsayılan Ödeyen açıksa geçit eksik ya da hiç gönderilmeyen fatura bilgisini varsayılan ödeyenden tamamlar; kapalıyken eksik adres eskisi gibi `ValidationException` (422) alır. `CreateSavedCard`'da `customer(...)` ve referans zorunlu kalır. Mevcut kod değişmeden çalışır.
+- **403 anlatımı:** `ForbiddenException` artık iki durumu anlatır: çalışma alanının ödenmemiş bakiyesi ya da ucun modülünün kapalı olması (modülleri ödemehub açar). Plan anlatımı README'den ve açıklamalardan çıktı; abonelik ve kayıtlı kart için **Kayıtlı Kartlar** modülünün açık olması gerekir.
+- Kurulum örnekleri 1.0.5'i gösterir.
 
 ## 1.0.4'teki değişiklikler
 
@@ -734,7 +741,7 @@ Bütün hatalar `com.odemehub.exception.OdemehubException`'dan türer ve denetim
 | `ValidationException` | 422 | Gönderdiğiniz alanlar kabul edilmedi. Ödeme denenmedi. `getErrors()` alan alan söyler. |
 | `NotFoundException` | 404 | Güncellenmek, silinmek, iade ya da iptal edilmek istenen kayıt çalışma alanınızda yok (sorgularda boş liste döner). |
 | `AuthenticationException` | 401 | API anahtarı bu çalışma alanına ait değil, imza gizli anahtarla tutmuyor ya da saatiniz kaymış. |
-| `ForbiddenException` | 403 | Çalışma alanınız şu an işlem yapamıyor ya da planınız / modülleriniz bu ucu kapsamıyor. |
+| `ForbiddenException` | 403 | Çalışma alanınız şu an işlem yapamıyor (ödenmemiş bakiye) ya da ucun modülü kapalı; açtırmak için bizimle iletişime geçin. |
 | `RateLimitException` | 429 | Çok sık istek. `getRetryAfter()` kaç saniye beklemeniz gerektiğini söyler. |
 | `SignatureException` | — | Gelen yanıtın ya da bildirimin imzası tutmadı. Geçitten geldiği kanıtlanamaz; **işleme almayın**. |
 | `TransportException` | — | Geçide ulaşılamadı ya da yanıt okunamadı. Ödemenin ne olduğu belirsizdir; geçitteki kayıt asıl doğruyu söyler. |

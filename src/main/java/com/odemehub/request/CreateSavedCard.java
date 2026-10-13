@@ -55,7 +55,7 @@ public final class CreateSavedCard extends Message {
         private Builder() {
         }
 
-        /** Who the card belongs to: the reference and the whole billing address, both required; what is left out of the address is filled from the team's default payer, where it uses one. */
+        /** Who the card belongs to: the reference, always, and the whole billing address; where the team uses a default payer, the address may be partial or left out and what is missing is filled from it. */
         public Builder customer(PaymentCustomer customer) {
             this.customer = customer;
             return this;

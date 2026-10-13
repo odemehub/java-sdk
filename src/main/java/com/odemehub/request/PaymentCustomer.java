@@ -13,6 +13,10 @@ import java.util.Map;
  * <p>The reference may be left out of a payment, and the payer is then
  * nobody the team keeps; but a payment that keeps its card, one made with a
  * kept card and a card kept on its own have to carry it.
+ *
+ * <p>Neither part is checked here: the gateway says what it needs. With the
+ * default payer off it turns down a customer without the whole billing
+ * address; with it on, the address, or any field of it, may be left out.
  */
 public final class PaymentCustomer {
 
@@ -21,17 +25,21 @@ public final class PaymentCustomer {
 
     private PaymentCustomer(Builder builder) {
         this.reference = builder.reference;
-        this.billingAddress = Fields.required(builder.billingAddress, "billingAddress");
+        this.billingAddress = builder.billingAddress;
     }
 
     public static Builder builder() {
         return new Builder();
     }
 
+    /**
+     * The body. A part that is not given is left out altogether rather than
+     * sent empty.
+     */
     Map<String, Object> toBody() {
         return Fields.said(
             "reference", reference,
-            "billing_address", billingAddress.toBody()
+            "billing_address", billingAddress == null ? null : billingAddress.toBody()
         );
     }
 
@@ -49,7 +57,12 @@ public final class PaymentCustomer {
             return this;
         }
 
-        /** Where the customer is billed: all eight person fields, unless the team fills what is left out from its default payer; the three company fields together or not at all. */
+        /**
+         * Where the customer is billed: all eight person fields, the three
+         * company fields together or not at all. Where the team fills what is
+         * left out from its default payer, the fields known are enough, or
+         * none; left out, it is not sent.
+         */
         public Builder billingAddress(Address billingAddress) {
             this.billingAddress = billingAddress;
             return this;

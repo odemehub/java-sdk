@@ -14,7 +14,7 @@ import java.util.Map;
  *
  * <p>The customer needs a reference: the card the renewals are taken from is
  * kept for the team's customer under it. The account, named or the default, has to keep
- * cards and take 3D payments, and the plan has to cover saved cards.
+ * cards and take 3D payments, and the Kayıtlı Kartlar module has to be on.
  */
 public final class CreateSubscription extends CheckoutMessage {
 
