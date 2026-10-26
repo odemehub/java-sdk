@@ -5,38 +5,38 @@ package com.odemehub.request;
  * merchant's reference for them, or the ones kept between two days. A
  * customer's cards come with the one they pay with by default first.
  */
-public final class RetrieveSavedCards extends Retrieve {
+public final class RetrieveSavedCards extends Retrieve<RetrieveSavedCards> {
 
-    private RetrieveSavedCards(String token, String reference, String createdFrom, String createdTo) {
-        super(token, reference, createdFrom, createdTo);
+    private RetrieveSavedCards(String token, String reference, String createdFrom, String createdTo, Integer page, Integer perPage) {
+        super(token, reference, createdFrom, createdTo, page, perPage, RetrieveSavedCards::new);
     }
 
     /**
      * The one record with the token.
      */
     public static RetrieveSavedCards byToken(String token) {
-        return new RetrieveSavedCards(Fields.required(token, "token"), null, null, null);
+        return new RetrieveSavedCards(Fields.required(token, "token"), null, null, null, null, null);
     }
 
     /**
      * Every card kept for the customer under the merchant's reference for them.
      */
     public static RetrieveSavedCards byReference(String reference) {
-        return new RetrieveSavedCards(null, Fields.required(reference, "reference"), null, null);
+        return new RetrieveSavedCards(null, Fields.required(reference, "reference"), null, null, null, null);
     }
 
     /**
      * The records made between two days, both included, as {@code YYYY-MM-DD}.
      */
     public static RetrieveSavedCards between(String createdFrom, String createdTo) {
-        return new RetrieveSavedCards(null, null, Fields.required(createdFrom, "createdFrom"), Fields.required(createdTo, "createdTo"));
+        return new RetrieveSavedCards(null, null, Fields.required(createdFrom, "createdFrom"), Fields.required(createdTo, "createdTo"), null, null);
     }
 
     /**
      * The records made in the last seven days.
      */
     public static RetrieveSavedCards latest() {
-        return new RetrieveSavedCards(null, null, null, null);
+        return new RetrieveSavedCards(null, null, null, null, null, null);
     }
 
     @Override

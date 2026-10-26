@@ -9,9 +9,9 @@ import java.util.Map;
  * Ödeyen); an order or a subscription takes whatever is known and asks the
  * payer for the rest on the checkout page.
  *
- * <p>The three company fields are read on the billing address only, and
+ * <p>The three company fields belong on the billing address only, and
  * always together: the gateway turns down an address that names one of them
- * without the others.
+ * without the others, and a shipping address that names any of them.
  */
 public final class Address {
 

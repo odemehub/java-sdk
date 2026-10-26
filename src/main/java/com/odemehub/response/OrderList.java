@@ -14,12 +14,14 @@ public final class OrderList {
     private final Result result;
     private final String createdFrom;
     private final String createdTo;
+    private final Pagination pagination;
     private final List<Order> orders;
 
     private OrderList(JsonNode body) {
         this.result = Result.fromBody(body);
         this.createdFrom = Read.nonEmptyString(body.path("created_from"));
         this.createdTo = Read.nonEmptyString(body.path("created_to"));
+        this.pagination = Pagination.in(body.path("pagination"));
         this.orders = Read.list(body.path("orders"), Order::listed);
     }
 
@@ -41,12 +43,17 @@ public final class OrderList {
         return createdTo;
     }
 
+    /** Which page this is and how many records there are in all; ask for the next with {@code page(...)}. Null only for an answer that carries none. */
+    public Pagination getPagination() {
+        return pagination;
+    }
+
     public List<Order> getOrders() {
         return orders;
     }
 
     @Override
     public String toString() {
-        return "OrderList[result=" + result + ", createdFrom=" + createdFrom + ", createdTo=" + createdTo + ", orders=" + orders + "]";
+        return "OrderList[result=" + result + ", createdFrom=" + createdFrom + ", createdTo=" + createdTo + ", pagination=" + pagination + ", orders=" + orders + "]";
     }
 }

@@ -228,6 +228,59 @@ public final class Client {
     }
 
     /**
+     * The banks whose accounts may be added for their movements to be read,
+     * each with the credentials it asks for.
+     */
+    public com.odemehub.response.BankList retrieveBanks(com.odemehub.request.RetrieveBanks banks) {
+        return com.odemehub.response.BankList.fromBody(send(banks));
+    }
+
+    /**
+     * Add a bank account whose movements are to be read. The bank is asked
+     * first whether the credentials read the account; one it turns down is
+     * not added, and comes back as an unsuccessful result in the bank's own
+     * words rather than being thrown. Keep the token it comes back with.
+     */
+    public com.odemehub.response.BankAccountDetails createBankAccount(com.odemehub.request.CreateBankAccount bankAccount) {
+        return com.odemehub.response.BankAccountDetails.fromBody(send(bankAccount));
+    }
+
+    /**
+     * Bank accounts as they stand — by token, or every account of the
+     * team's — each with when it was last read and why the last reading
+     * failed, if it did; oldest first.
+     */
+    public com.odemehub.response.BankAccountList retrieveBankAccounts(com.odemehub.request.RetrieveBankAccounts bankAccounts) {
+        return com.odemehub.response.BankAccountList.fromBody(send(bankAccounts));
+    }
+
+    /**
+     * Rename a bank account, or replace its credentials. Only what is sent
+     * is written; new credentials are tried against the bank first and,
+     * turned down, change nothing.
+     */
+    public com.odemehub.response.BankAccountDetails updateBankAccount(com.odemehub.request.UpdateBankAccount bankAccount) {
+        return com.odemehub.response.BankAccountDetails.fromBody(send(bankAccount));
+    }
+
+    /**
+     * Remove a bank account and every movement read off it.
+     */
+    public com.odemehub.response.DeletedBankAccount deleteBankAccount(com.odemehub.request.DeleteBankAccount bankAccount) {
+        return com.odemehub.response.DeletedBankAccount.fromBody(send(bankAccount));
+    }
+
+    /**
+     * The movements on the team's bank accounts, a page at a time, oldest
+     * first. They are read from what the gateway keeps, not from the bank;
+     * the gateway reads every account at the bank once an hour, so the
+     * latest movements may be up to an hour behind.
+     */
+    public com.odemehub.response.BankTransactionList retrieveBankTransactions(com.odemehub.request.RetrieveBankTransactions bankTransactions) {
+        return com.odemehub.response.BankTransactionList.fromBody(send(bankTransactions));
+    }
+
+    /**
      * Read a word the gateway posted to one of the merchant's webhook
      * addresses. Hand it the request exactly as it arrived — the method, the
      * path of the address it came to (without the query string), the raw

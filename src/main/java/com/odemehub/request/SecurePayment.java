@@ -42,7 +42,12 @@ public final class SecurePayment extends Payment {
         private Builder() {
         }
 
-        /** Where the customer is posted back to, with the signed outcome, once they are done at their bank. */
+        /**
+         * Where the customer is posted back to, with the signed outcome, once
+         * they are done at their bank. Live, an https address reachable from
+         * the internet; on the sandbox any http or https address the browser
+         * can reach, localhost and {@code .test} names included.
+         */
         public Builder callbackUrl(String callbackUrl) {
             this.callbackUrl = callbackUrl;
             return this;

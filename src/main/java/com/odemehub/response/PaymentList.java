@@ -15,12 +15,14 @@ public final class PaymentList {
     private final Result result;
     private final String createdFrom;
     private final String createdTo;
+    private final Pagination pagination;
     private final List<Transaction> payments;
 
     private PaymentList(JsonNode body) {
         this.result = Result.fromBody(body);
         this.createdFrom = Read.nonEmptyString(body.path("created_from"));
         this.createdTo = Read.nonEmptyString(body.path("created_to"));
+        this.pagination = Pagination.in(body.path("pagination"));
         this.payments = Read.list(body.path("payments"), Transaction::fromBody);
     }
 
@@ -42,6 +44,11 @@ public final class PaymentList {
         return createdTo;
     }
 
+    /** Which page this is and how many records there are in all; ask for the next with {@code page(...)}. Null only for an answer that carries none. */
+    public Pagination getPagination() {
+        return pagination;
+    }
+
     public List<Transaction> getPayments() {
         return payments;
     }
@@ -53,6 +60,6 @@ public final class PaymentList {
 
     @Override
     public String toString() {
-        return "PaymentList[result=" + result + ", createdFrom=" + createdFrom + ", createdTo=" + createdTo + ", payments=" + payments + "]";
+        return "PaymentList[result=" + result + ", createdFrom=" + createdFrom + ", createdTo=" + createdTo + ", pagination=" + pagination + ", payments=" + payments + "]";
     }
 }

@@ -5,38 +5,38 @@ package com.odemehub.request;
  * merchant's reference, or the ones made between two days — the ones the bank
  * turned away included.
  */
-public final class RetrievePayments extends Retrieve {
+public final class RetrievePayments extends Retrieve<RetrievePayments> {
 
-    private RetrievePayments(String token, String reference, String createdFrom, String createdTo) {
-        super(token, reference, createdFrom, createdTo);
+    private RetrievePayments(String token, String reference, String createdFrom, String createdTo, Integer page, Integer perPage) {
+        super(token, reference, createdFrom, createdTo, page, perPage, RetrievePayments::new);
     }
 
     /**
      * The one record with the token.
      */
     public static RetrievePayments byToken(String token) {
-        return new RetrievePayments(Fields.required(token, "token"), null, null, null);
+        return new RetrievePayments(Fields.required(token, "token"), null, null, null, null, null);
     }
 
     /**
      * The merchant's own reference for them.
      */
     public static RetrievePayments byReference(String reference) {
-        return new RetrievePayments(null, Fields.required(reference, "reference"), null, null);
+        return new RetrievePayments(null, Fields.required(reference, "reference"), null, null, null, null);
     }
 
     /**
      * The records made between two days, both included, as {@code YYYY-MM-DD}.
      */
     public static RetrievePayments between(String createdFrom, String createdTo) {
-        return new RetrievePayments(null, null, Fields.required(createdFrom, "createdFrom"), Fields.required(createdTo, "createdTo"));
+        return new RetrievePayments(null, null, Fields.required(createdFrom, "createdFrom"), Fields.required(createdTo, "createdTo"), null, null);
     }
 
     /**
      * The records made in the last seven days.
      */
     public static RetrievePayments latest() {
-        return new RetrievePayments(null, null, null, null);
+        return new RetrievePayments(null, null, null, null, null, null);
     }
 
     @Override

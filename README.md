@@ -1,6 +1,6 @@
 # ödemehub Java SDK
 
-ödemehub ödeme geçidini kendi uygulamanızdan kullanmak için hazırlanmış Java istemcisi. Kart çekmek, 3D ödeme başlatmak, müşteriyi ödeme sayfasına yollamak (sipariş, ödeme linki, abonelik), kart saklamak, iade ve iptal yapmak ve bir kartın taksit seçeneklerini sormak için gereken her şey burada.
+ödemehub ödeme geçidini kendi uygulamanızdan kullanmak için hazırlanmış Java istemcisi. Kart çekmek, 3D ödeme başlatmak, müşteriyi ödeme sayfasına yollamak (sipariş, ödeme linki, abonelik), kart saklamak, iade ve iptal yapmak, bir kartın taksit seçeneklerini sormak ve banka hesaplarınızın hareketlerini okumak için gereken her şey burada.
 
 İstemci her isteği takımınızın gizli anahtarıyla imzalar, gelen her yanıtın imzasını doğrular. Siz imza, başlık ya da JSON ayrıntılarıyla uğraşmazsınız. İstekler Java'nın kendi `HttpClient`'ıyla gider; tek bağımlılık JSON için Jackson'dır.
 
@@ -16,14 +16,14 @@ Maven:
 <dependency>
     <groupId>com.odemehub</groupId>
     <artifactId>java-sdk</artifactId>
-    <version>1.0.5</version>
+    <version>1.0.6</version>
 </dependency>
 ```
 
 Gradle:
 
 ```groovy
-implementation 'com.odemehub:java-sdk:1.0.5'
+implementation 'com.odemehub:java-sdk:1.0.6'
 ```
 
 ## Yapılandırma
@@ -31,6 +31,8 @@ implementation 'com.odemehub:java-sdk:1.0.5'
 Üç bilgiye ihtiyacınız var. Hepsi paneldeki **Entegrasyon** sayfasındadır (menünün en altında): API anahtarı, gizli anahtar ve Çalışma Alanı Kimliğiniz. Ödeme hesaplarınızın token'ları da oradadır.
 
 Entegrasyonu sandbox'ta (`https://sandbox.odemehub.com`) geliştirin; sandbox'ta hesap açın ve bilgileri oradaki panelden alın. Canlıya çıkarken `app.odemehub.com` üzerinde açtığınız hesabın bilgileriyle `baseUrl`'i `https://app.odemehub.com` yapın.
+
+Dönüş adresleri (`callbackUrl`, `successUrl`, `cancelUrl`) canlıda internetten erişilebilen `https` adresleri olmalıdır; sandbox'ta tarayıcınızın ulaşabildiği her `http`/`https` adresi, `localhost` ve `.test` adları da kabul edilir. Görsel adresleri (`Item.image`) `http` ya da `https` olabilir.
 
 ```java
 import com.odemehub.Client;
@@ -46,7 +48,7 @@ Client client = new Client(Options.builder()
 
 Gizli anahtar hiçbir zaman tel üzerinden gitmez; yalnızca imza üretmekte kullanılır. Anahtarları kodun içine yazmayın, ortam değişkeninde tutun. İmza, isteğin atıldığı anı da kapsar: sunucunuzun saati beş dakikadan fazla kaymışsa istekler `AuthenticationException` ile geri çevrilir, saatinizi NTP ile eşitleyin.
 
-Geçit hiçbir yerde veritabanı numarası kullanmaz: ödeme hesabı, işlem, sipariş, ödeme linki, link ödemesi, abonelik ve kayıtlı kart her zaman token'ıyla ya da referansıyla adlanır.
+Geçit hiçbir yerde veritabanı numarası kullanmaz: ödeme hesabı, işlem, sipariş, ödeme linki, link ödemesi, abonelik, kayıtlı kart, banka hesabı ve banka hareketi her zaman token'ıyla ya da referansıyla adlanır.
 
 İstemci durum tutmaz; uygulama boyunca tek bir nesneyi bütün thread'lerde paylaşabilirsiniz (Spring'de bir `@Bean`). İstek bir dakika içinde yanıt almazsa kesilir; süreyi `Options.builder().timeout(Duration.ofSeconds(30))` ile değiştirebilirsiniz. Vekil sunucu gibi ayarlar için kendi `HttpClient`'ınızı `new Client(options, httpClient)` ile verebilirsiniz.
 
@@ -54,7 +56,7 @@ Her uç için bir metot vardır ve adı uçla aynıdır: `create-order` → `cli
 
 Yanıtlar `com.odemehub.response` paketindedir ve API'nin JSON'unu iç içe olduğu gibi yansıtır: ödeme yanıtında ödeme `getTransaction()` altında, iadede iade `getRefund()` altında durur. Ödeme uçlarında istek ve yanıt sınıfları aynı adı taşır (`request.SecurePayment` → `response.SecurePayment`); ikisini aynı dosyada kullanırken yanıtı `var` ile karşılamak en rahatıdır.
 
-Sabit değer kümeleri `com.odemehub.enums` paketindeki enum'lardır: `Currency`, `Period`, `OrderStatus`, `SubscriptionStatus`, `LinkPaymentStatus`, `TransactionStatus`, `PaymentStatus`, `SecurityType`, `RefundType`, `RefundStatus`, `CardScheme`, `CardType`, `AmountType`, `CurrencyType`, `TaxMode`, `WebhookEvent`. Her biri geçidin yazdığı değeri `getValue()` ile verir. Geçit bu sürümün tanımadığı yeni bir değer gönderirse SDK çökmez; o alan `null` okunur.
+Sabit değer kümeleri `com.odemehub.enums` paketindeki enum'lardır: `Currency`, `Period`, `OrderStatus`, `SubscriptionStatus`, `LinkPaymentStatus`, `TransactionStatus`, `PaymentStatus`, `SecurityType`, `RefundType`, `CardScheme`, `CardType`, `AmountType`, `CurrencyType`, `TaxMode`, `WebhookEvent`. Her biri geçidin yazdığı değeri `getValue()` ile verir. Geçit bu sürümün tanımadığı yeni bir değer gönderirse SDK çökmez; o alan `null` okunur.
 
 ## Uçlar
 
@@ -80,8 +82,14 @@ Sabit değer kümeleri `com.odemehub.enums` paketindeki enum'lardır: `Currency`
 | `retrieveSavedCards` | `POST retrieve-saved-cards` | `SavedCardList` |
 | `updateSavedCard` | `POST update-saved-card/{token}` | `SavedCardDetails` |
 | `deleteSavedCard` | `POST delete-saved-card/{token}` | `DeletedSavedCard` |
+| `retrieveBanks` | `POST retrieve-banks` | `BankList` |
+| `createBankAccount` | `POST create-bank-account` | `BankAccountDetails` |
+| `retrieveBankAccounts` | `POST retrieve-bank-accounts` | `BankAccountList` |
+| `updateBankAccount` | `POST update-bank-account/{token}` | `BankAccountDetails` |
+| `deleteBankAccount` | `POST delete-bank-account/{token}` | `DeletedBankAccount` |
+| `retrieveBankTransactions` | `POST retrieve-bank-transactions` | `BankTransactionList` |
 
-Her kaynağa aynı yoldan ulaşılır: `create-*` her çağrıda yeni bir kayıt açar ve yeni token'ını döner (aynı referansla çağırsanız da), `retrieve-*` token'la, sizin referansınızla ya da en fazla yedi günlük bir tarih aralığıyla sorar ve her zaman liste döner (eşleşen yoksa boş liste), `update-*/{token}` yalnızca gönderdiğiniz alanları değiştirir. Sorgu istekleri `byToken(...)`, `byReference(...)`, `between(...)` ya da `latest()` ile kurulur. Bütün uçlar POST'tur. Silinebilen tek kaynak kayıtlı karttır. Link ödemeleri yalnızca sorgulanır: onları ödeyen açar.
+Her kaynağa aynı yoldan ulaşılır: `create-*` her çağrıda yeni bir kayıt açar ve yeni token'ını döner (aynı referansla çağırsanız da), `retrieve-*` token'la, sizin referansınızla ya da en fazla yedi günlük bir tarih aralığıyla sorar ve her zaman liste döner (eşleşen yoksa boş liste), `update-*/{token}` yalnızca gönderdiğiniz alanları değiştirir. Sorgu istekleri `byToken(...)`, `byReference(...)`, `between(...)` ya da `latest()` ile kurulur; yanıt her zaman sayfalıdır, sayfa `.page(...)` / `.perPage(...)` ile seçilir (bkz. [Sayfa sayfa sorgulamak](#sayfa-sayfa-sorgulamak)). Bütün uçlar POST'tur. Silinebilen kaynaklar kayıtlı kart ve banka hesabıdır. Link ödemeleri yalnızca sorgulanır: onları ödeyen açar. Banka hesapları ve hareketleri bu kalıbın dışındadır; bkz. [Banka hareketleri](#banka-hareketleri).
 
 Referans sizin numaranızdır ve tekil değildir; sipariş, abonelik ve link aynı referansla birden fazla kez açılabilir. Kaydı bundan sonra adlandıran şey token'dır: her `create-*` yanıtındaki token'ı kendi kaydınızda saklayın.
 
@@ -118,7 +126,7 @@ Customer orderCustomer = Customer.builder()              // sipariş ve abonelik
 
 - **Ödeme ve kart saklama:** fatura adresinin sekiz alanı da zorunludur; teslimat adresi gönderilmez (`PaymentCustomer` onu taşımaz). Referans, kart saklayan ya da kayıtlı kartla yapılan ödemede ve kart saklamada zorunludur.
 - **Varsayılan Ödeyen:** panelde **Ödeme Ayarları → Varsayılan Ödeyen** açıksa fatura adresinin alanlarını eksik bırakabilir, `billingAddress`'i hiç vermeyebilirsiniz; ödemede `customer(...)` da verilmeyebilir (kart saklamada referans yine zorunludur). Eksikler sağlayıcıya varsayılan ödeyenden gider, müşteri kaydına gitmez. SDK bunu denetlemez: ayar kapalıyken eksik adresi geçit `ValidationException` ile reddeder.
-- **Sipariş ve abonelik:** elinizde ne varsa onu gönderin; ödeme sayfası eksikleri müşteriye sorar. Abonelikte referans zorunludur; siparişte referans verilmezse ödeyen müşteri listenize yazılmaz.
+- **Sipariş ve abonelik:** elinizde ne varsa onu gönderin; ödeme sayfası eksikleri müşteriye sorar. Teslimat adresi yalnızca sekiz kişi alanını alır: `companyTitle`, `taxNumber` ya da `taxOffice` verilmiş bir `shippingAddress` `ValidationException` (422) alır; şirket bilgisi fatura adresinde gönderilir. Abonelikte referans zorunludur; siparişte referans verilmezse ödeyen müşteri listenize yazılmaz.
 - **Müşteri listesi:** referans gönderdiğiniz ödeme başarılı olunca geçit müşteriyi o referansla çalışma alanınızın müşteri listesine yazar ya da günceller; başarısız ödeme müşteriye dokunmaz. Referanssız ödeme yine alınır ama müşteri kaydedilmez ve kart saklanamaz. Saklanan kart müşteriye bağlanır; müşterinin son ödeme yaptığı kart varsayılan kartı olur.
 
 ## Karttan doğrudan çekim
@@ -229,6 +237,31 @@ for (var attempt : payments.getPayments()) {
 
 Listedeki her deneme (`response.Transaction`) `getToken()`, `getStatus()` (`TransactionStatus`: `STARTED`, `REDIRECTED_TO_SECURE_PAGE`, `RETURNED_FROM_SECURE_PAGE`, `TIMEOUT`, `FAILED`, `EXPIRED`, `SUCCESSFUL`), `getPaymentStatus()` (`PaymentStatus`: `UNPAID`, `PAID`, `CANCELLED`, `REFUNDED`, `PARTIALLY_REFUNDED`), `getSecurityType()`, `getAmount()` / `getBaseAmount()` / `getCurrency()`, `getInstallmentNumber()`, `isTest()`, `getErrorCode()` / `getErrorMessage()`, `getCreatedAt()`, `getCustomer()`, `getConversion()`, kart saklanması istendiyse `getSavedCard()` ve bağlı olduğu `getOrderToken()` / `getPaymentLinkToken()` / `getLinkPaymentToken()` / `getSubscriptionToken()` alanlarını taşır (linkte yapılan ödemede link ve link ödemesi birlikte dolu gelir). Ödeme sayfasında yapılan denemeler de burada görünür. `payments.successful()` geçen denemeleri verir.
 
+### Sayfa sayfa sorgulamak
+
+Bütün sorgular (`retrievePayments`, `retrieveOrders`, `retrieveSubscriptions`, `retrievePaymentLinks`, `retrieveLinkPayments`, `retrieveSavedCards`) ve `retrieveBankTransactions` her zaman sayfalı döner; yanıt yalnızca o sayfanın kayıtlarını taşır ve `getPagination()` sayfanın yerini ve toplam kayıt sayısını (`getTotal()`) söyler. Sayfa `.page(...)` ve `.perPage(...)` ile seçilir: sayfa başına en fazla 250 kayıt; `page` verilip `perPage` verilmezse sayfa 50 kayıttır, ikisi de verilmezse ilk sayfa 250 kayıtla gelir. Yoğun bir çalışma alanında yedi günde binlerce kayıt olabilir; `getPagination().hasMorePages()` doğruysa sonraki sayfaları da isteyin. Sıralama değişmez. `retrieveBankAccounts` sayfasızdır.
+
+```java
+var query = RetrievePayments.between("2026-09-26", "2026-10-02").perPage(250);
+int page = 1;
+
+while (true) {
+    var payments = client.retrievePayments(query.page(page));
+
+    for (var attempt : payments.getPayments()) {
+        // ...
+    }
+
+    if (!payments.getPagination().hasMorePages()) {
+        break;
+    }
+
+    page++;
+}
+```
+
+`page` ve `perPage` sorguyu değiştirmez, yeni bir sorgu döner; aynı sorgudan farklı sayfalar istenebilir. Sınır dışı değerler `ValidationException` (422) alır.
+
 ## Kalemler ve gönderim
 
 Sipariş, ödeme linki ve abonelik kalemlerden oluşur. Her kalem kendi adını ve fiyatını taşır; katalogdan hiçbir şey okunmaz. Birim fiyat **KDV dahildir**: %20 KDV'li 120,00'lik bir kalemin 100,00'ü mal, 20,00'si vergidir. Toplamı siz göndermezsiniz; geçit kalemleri toplar ve yanıtta `getSubtotal()`, `getTaxAmount()` ve `getAmount()` olarak döner. İki istisna vardır: tutarı ödeyenin seçtiği ödeme linki kalem almaz (bkz. [Ödeme linki](#ödeme-linki)) ve ödeme sayfasında girilen kupon tutarları düşürür (bkz. aşağıda `getDiscount()`).
@@ -246,7 +279,7 @@ var items = List.of(
 );
 ```
 
-`taxRate` verilmezse kalem vergisizdir. Gönderim yöntemleri istekte gönderilmez: sipariş ya da abonelikte `requiresShipping(true)` verirseniz ödeme sayfası teslimat adresini sorar ve panelinizdeki **Gönderim Yöntemleri** listesinden o adrese gönderenleri sunar; seçilenin ücreti toplama eklenir ve yanıtta `getShippingMethod()` olarak döner.
+Bir istekte en fazla 100 kalem gönderilir; fazlası `ValidationException` (422) alır. `taxRate` verilmezse kalem vergisizdir. Gönderim yöntemleri istekte gönderilmez: sipariş ya da abonelikte `requiresShipping(true)` verirseniz ödeme sayfası teslimat adresini sorar ve panelinizdeki **Gönderim Yöntemleri** listesinden o adrese gönderenleri sunar; seçilenin ücreti toplama eklenir ve yanıtta `getShippingMethod()` olarak döner.
 
 ## Sipariş (ödeme sayfası)
 
@@ -384,7 +417,7 @@ client.updatePaymentLink(UpdatePaymentLink.builder(token)
     .build());
 ```
 
-Yalnızca gönderdiğiniz alanlar yazılır; kalem gönderirseniz eski kalemlerin hepsinin yerine geçer. `clear(...)` ile `expires_at`, `description`, `payment_provider_token`, `item_name`, `predefined_amounts`, `tax_rate` ve `currencies` boşaltılabilir. Değişiklikten sonra `FIXED` olan linkin kalemi yoksa (ödeyenin seçtiği tutardan `FIXED`'e dönerken kalem göndermediyseniz) istek `payment_link.items` alanında reddedilir. Süresi geçmiş link yeni bir `expiresAt` verilince (ya da `expires_at` boşaltılınca) yeniden ödeme alır. Ödemesi sürmekte olan link de değiştirilebilir; sonraki ödemeler yeni hâliyle alınır.
+Yalnızca gönderdiğiniz alanlar yazılır; kalem gönderirseniz eski kalemlerin hepsinin yerine geçer. Değiştirilecek hiçbir alan vermeden (yalnız token'la) çağrılırsa geçit `ValidationException` (422) döner. `clear(...)` ile `expires_at`, `description`, `payment_provider_token`, `item_name`, `predefined_amounts`, `tax_rate` ve `currencies` boşaltılabilir. Değişiklikten sonra `FIXED` olan linkin kalemi yoksa (ödeyenin seçtiği tutardan `FIXED`'e dönerken kalem göndermediyseniz) istek `payment_link.items` alanında reddedilir. Süresi geçmiş link yeni bir `expiresAt` verilince (ya da `expires_at` boşaltılınca) yeniden ödeme alır. Ödemesi sürmekte olan link de değiştirilebilir; sonraki ödemeler yeni hâliyle alınır.
 
 Panelde açılan linkler de aynı uçlarla, token'ı ya da referansıyla bulunur. Linkle ödeyen kişi müşteri listenize yazılmaz ve kartı saklanmaz. Linkin 50'den eski denemeleri `retrievePayments()` ile tarih aralığıyla okunur.
 
@@ -401,7 +434,7 @@ for (var linkPayment : linkPayments.paid()) {
     linkPayment.getPaymentLinkToken();               // hangi linkte
     linkPayment.getAmount();                         // ödenen tutar, kupon düşülmüş
     linkPayment.getCurrency();
-    linkPayment.getCustomer().getBillingAddress();   // ödeyenin fatura bilgisi
+    linkPayment.getCustomer().getBillingAddress();   // ödeyenin fatura bilgisi; getReference() her zaman null
     linkPayment.getTransaction().getToken();         // iade / iptal / retrievePayments için
 }
 ```
@@ -658,6 +691,81 @@ var payment = client.regularPayment(RegularPayment.builder()
 
 Kart saklayan bir ödemenin yanıtında `payment.getSavedCard()` dolu gelir; kartın token'ını oradan öğrenirsiniz. Kart her yerde token ile adlandırılır; yanıtlardaki `getCustomer().getReference()` kartın kimin için saklandığını söyler.
 
+## Banka hareketleri
+
+Banka hesaplarınızı ekleyip hesaplarınıza giren ve çıkan parayı geçitten okuyabilirsiniz. **Banka Hareketleri** modülünün açık olması gerekir; kapalıysa bütün uçlar `ForbiddenException` (403) alır. Bugün Enpara hesapları eklenebilir; hangi bankaların eklenebildiğini ve her birinin hangi kimlik bilgilerini istediğini `retrieveBanks` söyler.
+
+```java
+import com.odemehub.request.CreateBankAccount;
+import com.odemehub.request.DeleteBankAccount;
+import com.odemehub.request.RetrieveBankAccounts;
+import com.odemehub.request.RetrieveBanks;
+import com.odemehub.request.UpdateBankAccount;
+
+for (var bank : client.retrieveBanks(new RetrieveBanks()).getBanks()) {
+    bank.getId();       // "enpara": hesabı eklerken provider
+    bank.getFields();   // istenen kimlik bilgileri: getKey() "client_id", getLabel() "Client ID"
+}
+
+// Geçit önce bankaya sorar; banka kimlik bilgilerini reddederse hesap eklenmez.
+var added = client.createBankAccount(CreateBankAccount.builder()
+    .provider("enpara")
+    .name("Enpara TL")
+    .iban("TR12 0011 1000 0000 0012 3456 78")   // boşluklu ya da boşluksuz
+    .settings(Map.of(
+        "client_id", "...",
+        "client_secret", "...",
+        "access_token", "...",
+        "refresh_token", "..."))
+    .build());
+
+if (!added.getResult().isSuccessful()) {
+    added.getResult().getMessage();   // bankanın kendi mesajı; getBankAccount() null
+}
+
+String token = added.getBankAccount().getToken();   // hareketleri bununla sorarsınız; saklayın
+
+var accounts = client.retrieveBankAccounts(RetrieveBankAccounts.all()).getBankAccounts();   // ya da byTokens(token, ...)
+accounts.get(0).getSyncedAt();    // bankadan son okunduğu an; henüz okunmadıysa null
+accounts.get(0).getLastError();   // son okuma neden başarısız oldu; başarılıysa null
+
+client.updateBankAccount(UpdateBankAccount.builder(token).name("Enpara Ana Hesap").build());
+client.updateBankAccount(UpdateBankAccount.builder(token)
+    .settings(Map.of("access_token", "...", "refresh_token", "..."))   // yalnız değişenler
+    .build());
+client.deleteBankAccount(new DeleteBankAccount(token));   // hesabın bütün hareketleriyle birlikte
+```
+
+- IBAN boşlukları silinip büyük harfe çevrildikten sonra `TR` ile başlayan 26 karakter olmalıdır; aynı IBAN çalışma alanına bir kez eklenir. Biçim, eksik kimlik bilgisi ya da tanınmayan banka `ValidationException` (422) alır.
+- Bankanın kimlik bilgilerini reddetmesi istisna değildir: ödeme reddi gibi `getResult().isSuccessful()` `false` döner ve hesap eklenmez ya da değişmez.
+- Kimlik bilgileri hiçbir yanıtta dönmez. Hesabın bankası ve IBAN'ı değişmez; başka IBAN başka hesaptır. `updateBankAccount` ne ad ne kimlik bilgisi verilmeden çağrılırsa `ValidationException` (422) alır.
+- Güncellenen ya da silinen hesabın token'ı çalışma alanınızda yoksa `NotFoundException` (404) atılır. `retrieveBankAccounts` bulunamayan token'da boş liste döner.
+
+Hareketler hesapların token'larıyla, bankanın hareketi işlediği güne göre sorulur:
+
+```java
+import com.odemehub.request.RetrieveBankTransactions;
+
+var page = client.retrieveBankTransactions(RetrieveBankTransactions.builder(token)   // 1–50 hesap
+    .between("2026-10-20", "2026-10-26")   // en fazla 7 gün; verilmezse son 7 gün
+    .perPage(250)                          // en fazla 250; page verilip perPage verilmezse 50, ikisi de verilmezse 250
+    .page(1)
+    .build());
+
+for (var movement : page.getBankTransactions()) {
+    movement.getBookedAt();      // bankanın işlediği an, UTC
+    movement.getAmount();        // "22164.96" giren, "-40.00" çıkan
+    movement.getCurrency();      // Currency.TRY
+    movement.getBalanceAfter();  // hareketten sonraki bakiye; banka vermezse null
+    movement.getDescription();
+    movement.getCounterpartyIban();
+}
+
+page.getPagination().hasMorePages();   // sonraki sayfa için page(2)
+```
+
+Hareketler bankadan değil geçidin sakladığı kayıtlardan okunur. Geçit her hesabı saatte bir bankadan çeker, bu yüzden en yeni hareketler bir saate kadar geride olabilir; hesap eklenince son 7 günün hareketleri çekilir. Tarihler çalışma alanınızın saat diliminde, iki uç dahildir. Birden çok hesap verilirse hareketler bankanın tarihine göre iç içe, eskiden yeniye sıralanır. Bu uçlar için webhook yoktur.
+
 ## İade ve iptal
 
 ```java
@@ -674,6 +782,25 @@ refund.getRefund().getType();     // RefundType.REFUND
 refund.getRefund().getAmount();   // 100.00
 refund.getTransaction().getPaymentStatus();   // PaymentStatus.PARTIALLY_REFUNDED
 ```
+
+## 1.0.6'daki değişiklikler
+
+Eklenenler:
+
+- **Banka hareketleri:** `retrieveBanks`, `createBankAccount`, `retrieveBankAccounts`, `updateBankAccount`, `deleteBankAccount` ve `retrieveBankTransactions` uçları; `RetrieveBanks`, `CreateBankAccount`, `RetrieveBankAccounts`, `UpdateBankAccount`, `DeleteBankAccount`, `RetrieveBankTransactions` istekleri; `BankList`, `Bank`, `BankField`, `BankAccountDetails`, `BankAccountList`, `BankAccount`, `DeletedBankAccount`, `BankTransactionList`, `BankTransaction` ve `Pagination` yanıtları. **Banka Hareketleri** modülünü ister. `retrieveBankTransactions` sayfalıdır: yanıt `getPagination()` taşır, sayfa `page(...)` ve `perPage(...)` ile seçilir. Bkz. [Banka hareketleri](#banka-hareketleri).
+- **Sorgularda sayfalama:** `RetrievePayments`, `RetrieveOrders`, `RetrieveSubscriptions`, `RetrievePaymentLinks`, `RetrieveLinkPayments` ve `RetrieveSavedCards` isteklerine `page(int)` ve `perPage(int)` (sorguyu değiştirmeden yeni sorgu döner); `PaymentList`, `OrderList`, `SubscriptionList`, `PaymentLinkList`, `LinkPaymentList` ve `SavedCardList` yanıtlarına `getPagination()` (`Pagination`). Geçit artık bütün sorguları her zaman sayfalı yanıtlar ve `pagination`'ı her yanıtta döner; sayfa başına en fazla 250 kayıt, `page` verilip `perPage` verilmezse 50. Davranış değişikliği (SDK'nın değil, geçidin): sayfa istemeyen bir sorgu artık bütün kayıtları değil ilk 250 kaydı alır; daha fazlası olup olmadığını `getPagination().getTotal()` ve `hasMorePages()` söyler. SDK'da istek alanları değişmedi ve `getPagination()` savunma için `null` olabilir; kod değişmeden derlenir. `retrieveBankTransactions` de aynı kurala uyar (`perPage` en fazla 250, hiçbiri verilmezse 250). `Retrieve` artık `Retrieve<R>` biçiminde genel bir türdür. Bkz. [Sayfa sayfa sorgulamak](#sayfa-sayfa-sorgulamak).
+
+Değişenler (yalnız açıklamalar; davranış aynı):
+
+- **Dönüş adresleri:** `successUrl`, `cancelUrl` ve `callbackUrl` açıklamaları geçidin kuralını söyler: canlıda internetten erişilebilen `https` adresi, sandbox'ta `localhost` ve `.test` dahil her `http`/`https` adresi. `Item.image` `http` ya da `https` olabilir.
+- **404:** `NotFoundException` yalnızca token'la adlanan güncelleme, silme, iade ve iptal çağrılarında atılır; sorgular bulunamayan kaydı boş liste olarak döner.
+- **Belgelenen sınırlar:** bir istekte en fazla 100 kalem; `updatePaymentLink` ve `updateBankAccount` değiştirilecek bir alan olmadan (yalnız token'la) çağrılırsa geçit `ValidationException` (422) döner.
+- **Teslimat adresi:** `Customer.shippingAddress` yalnızca sekiz kişi alanını alır; şirket alanları verilirse 422.
+- **Link ödemesinin müşterisi:** `LinkPayment.getCustomer().getReference()` her zaman `null`; geçit link ödemesinde yalnızca fatura adresini döner.
+
+Kırıcı değişiklik:
+
+- `RefundStatus` kaldırıldı; geçit iade durumu döndürmediği için hiçbir yanıtta kullanılmıyordu.
 
 ## 1.0.5'teki değişiklikler
 
@@ -739,7 +866,7 @@ Bütün hatalar `com.odemehub.exception.OdemehubException`'dan türer ve denetim
 | Hata | HTTP | Ne demek |
 | --- | --- | --- |
 | `ValidationException` | 422 | Gönderdiğiniz alanlar kabul edilmedi. Ödeme denenmedi. `getErrors()` alan alan söyler. |
-| `NotFoundException` | 404 | Güncellenmek, silinmek, iade ya da iptal edilmek istenen kayıt çalışma alanınızda yok (sorgularda boş liste döner). |
+| `NotFoundException` | 404 | Token'ıyla güncellenmek, silinmek, iade ya da iptal edilmek istenen kayıt (banka hesabı dahil) çalışma alanınızda yok. Yalnızca bu çağrılarda döner; sorgular (token, referans ya da tarihle) bulunamayan kaydı boş liste olarak döner. |
 | `AuthenticationException` | 401 | API anahtarı bu çalışma alanına ait değil, imza gizli anahtarla tutmuyor ya da saatiniz kaymış. |
 | `ForbiddenException` | 403 | Çalışma alanınız şu an işlem yapamıyor (ödenmemiş bakiye) ya da ucun modülü kapalı; açtırmak için bizimle iletişime geçin. |
 | `RateLimitException` | 429 | Çok sık istek. `getRetryAfter()` kaç saniye beklemeniz gerektiğini söyler. |

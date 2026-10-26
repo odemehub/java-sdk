@@ -117,7 +117,9 @@ public abstract class CheckoutMessage extends Message {
 
         /**
          * Where the customer's browser is posted back to once it is paid, with
-         * the payment's token. An http(s) address reachable from the internet.
+         * the payment's token. Live, an https address reachable from the
+         * internet; on the sandbox any http or https address the browser can
+         * reach, localhost and {@code .test} names included.
          */
         public B successUrl(String successUrl) {
             this.successUrl = successUrl;
@@ -139,7 +141,7 @@ public abstract class CheckoutMessage extends Message {
             return self();
         }
 
-        /** Where the customer goes if they turn back without paying; shown as a link on the checkout page. */
+        /** Where the customer goes if they turn back without paying; shown as a link on the checkout page. Held to the same rule as the success address. */
         public B cancelUrl(String cancelUrl) {
             this.cancelUrl = cancelUrl;
             return self();

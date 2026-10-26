@@ -59,7 +59,7 @@ public final class Customer {
             return this;
         }
 
-        /** Where the goods go. */
+        /** Where the goods go: the eight person fields only; an address naming a company, a tax number or a tax office is turned down here. */
         public Builder shippingAddress(Address shippingAddress) {
             this.shippingAddress = shippingAddress;
             return this;

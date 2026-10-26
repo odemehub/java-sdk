@@ -15,12 +15,14 @@ public final class SavedCardList {
     private final Result result;
     private final String createdFrom;
     private final String createdTo;
+    private final Pagination pagination;
     private final List<SavedCard> savedCards;
 
     private SavedCardList(JsonNode body) {
         this.result = Result.fromBody(body);
         this.createdFrom = Read.nonEmptyString(body.path("created_from"));
         this.createdTo = Read.nonEmptyString(body.path("created_to"));
+        this.pagination = Pagination.in(body.path("pagination"));
         this.savedCards = Read.list(body.path("saved_cards"), SavedCard::fromBody);
     }
 
@@ -42,6 +44,11 @@ public final class SavedCardList {
         return createdTo;
     }
 
+    /** Which page this is and how many records there are in all; ask for the next with {@code page(...)}. Null only for an answer that carries none. */
+    public Pagination getPagination() {
+        return pagination;
+    }
+
     public List<SavedCard> getSavedCards() {
         return savedCards;
     }
@@ -53,6 +60,6 @@ public final class SavedCardList {
 
     @Override
     public String toString() {
-        return "SavedCardList[result=" + result + ", createdFrom=" + createdFrom + ", createdTo=" + createdTo + ", savedCards=" + savedCards + "]";
+        return "SavedCardList[result=" + result + ", createdFrom=" + createdFrom + ", createdTo=" + createdTo + ", pagination=" + pagination + ", savedCards=" + savedCards + "]";
     }
 }

@@ -93,7 +93,7 @@ public final class Item {
             return this;
         }
 
-        /** The https address of the picture shown beside the line at checkout. */
+        /** The http or https address of the picture shown beside the line at checkout. */
         public Builder image(String image) {
             this.image = image;
             return this;

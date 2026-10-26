@@ -5,17 +5,17 @@ package com.odemehub.request;
  * the number the gateway gave it ({@code LINKPAY1}, {@code LINKPAY2}...), or
  * the ones made between two days.
  */
-public final class RetrieveLinkPayments extends Retrieve {
+public final class RetrieveLinkPayments extends Retrieve<RetrieveLinkPayments> {
 
-    private RetrieveLinkPayments(String token, String reference, String createdFrom, String createdTo) {
-        super(token, reference, createdFrom, createdTo);
+    private RetrieveLinkPayments(String token, String reference, String createdFrom, String createdTo, Integer page, Integer perPage) {
+        super(token, reference, createdFrom, createdTo, page, perPage, RetrieveLinkPayments::new);
     }
 
     /**
      * The one record with the token.
      */
     public static RetrieveLinkPayments byToken(String token) {
-        return new RetrieveLinkPayments(Fields.required(token, "token"), null, null, null);
+        return new RetrieveLinkPayments(Fields.required(token, "token"), null, null, null, null, null);
     }
 
     /**
@@ -23,21 +23,21 @@ public final class RetrieveLinkPayments extends Retrieve {
      * reference does not name its payments.
      */
     public static RetrieveLinkPayments byReference(String reference) {
-        return new RetrieveLinkPayments(null, Fields.required(reference, "reference"), null, null);
+        return new RetrieveLinkPayments(null, Fields.required(reference, "reference"), null, null, null, null);
     }
 
     /**
      * The records made between two days, both included, as {@code YYYY-MM-DD}.
      */
     public static RetrieveLinkPayments between(String createdFrom, String createdTo) {
-        return new RetrieveLinkPayments(null, null, Fields.required(createdFrom, "createdFrom"), Fields.required(createdTo, "createdTo"));
+        return new RetrieveLinkPayments(null, null, Fields.required(createdFrom, "createdFrom"), Fields.required(createdTo, "createdTo"), null, null);
     }
 
     /**
      * The records made in the last seven days.
      */
     public static RetrieveLinkPayments latest() {
-        return new RetrieveLinkPayments(null, null, null, null);
+        return new RetrieveLinkPayments(null, null, null, null, null, null);
     }
 
     @Override

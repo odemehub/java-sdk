@@ -18,7 +18,8 @@ import java.util.Map;
  * gateway says so on {@code payment_link.items}. Switching a link off is
  * {@code isActive(false)}; one whose last day has gone by is switched back on
  * by giving it a new {@code expiresAt}, or none. A payment under way does not stand in
- * the way: the payments to come are charged as the link is changed.
+ * the way: the payments to come are charged as the link is changed. A change
+ * that sends nothing to change is turned down.
  */
 public final class UpdatePaymentLink extends Message {
 
