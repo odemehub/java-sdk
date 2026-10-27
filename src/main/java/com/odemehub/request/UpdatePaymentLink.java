@@ -39,6 +39,7 @@ public final class UpdatePaymentLink extends Message {
     private final Boolean emailsCustomer;
     private final String expiresAt;
     private final Boolean isActive;
+    private final MaxInstallments maxInstallments;
     private final List<String> clear;
 
     private UpdatePaymentLink(Builder builder) {
@@ -58,6 +59,7 @@ public final class UpdatePaymentLink extends Message {
         this.emailsCustomer = builder.emailsCustomer;
         this.expiresAt = builder.expiresAt;
         this.isActive = builder.isActive;
+        this.maxInstallments = builder.maxInstallments;
         this.clear = List.copyOf(builder.clear);
     }
 
@@ -88,6 +90,7 @@ public final class UpdatePaymentLink extends Message {
             "currency_type", currencyType == null ? null : currencyType.getValue(),
             "currencies", Fields.each(currencies, Currency::getValue),
             "emails_customer", emailsCustomer,
+            "max_installments", maxInstallments == null ? null : maxInstallments.toBody(),
             "expires_at", expiresAt,
             "is_active", isActive,
             "items", Fields.each(items, Item::toBody)
@@ -118,6 +121,7 @@ public final class UpdatePaymentLink extends Message {
         private Boolean emailsCustomer;
         private String expiresAt;
         private Boolean isActive;
+        private MaxInstallments maxInstallments;
         private final List<String> clear = new ArrayList<>();
 
         private Builder(String token) {
@@ -206,6 +210,17 @@ public final class UpdatePaymentLink extends Message {
 
         public Builder isActive(boolean isActive) {
             this.isActive = isActive;
+            return this;
+        }
+
+        /**
+         * The most installments the payer is offered on the link's checkout
+         * page, for cards issued to people and to companies. It takes the
+         * place of the limits there were; one with neither number set lifts
+         * them.
+         */
+        public Builder maxInstallments(MaxInstallments maxInstallments) {
+            this.maxInstallments = maxInstallments;
             return this;
         }
 

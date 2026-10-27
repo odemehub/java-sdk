@@ -22,6 +22,7 @@ public final class Order {
     private final boolean requiresShipping;
     private final boolean locksCustomer;
     private final boolean emailsCustomer;
+    private final MaxInstallments maxInstallments;
     private final List<Item> items;
     private final ShippingMethod shippingMethod;
     private final Discount discount;
@@ -45,6 +46,7 @@ public final class Order {
         this.requiresShipping = Read.bool(order.path("requires_shipping"));
         this.locksCustomer = Read.bool(order.path("locks_customer"));
         this.emailsCustomer = Read.bool(order.path("emails_customer"));
+        this.maxInstallments = MaxInstallments.in(order.path("max_installments"));
         this.items = Read.list(order.path("items"), Item::fromBody);
         this.shippingMethod = ShippingMethod.in(order.path("shipping_method"));
         this.discount = Discount.in(order.path("discount"));
@@ -118,6 +120,11 @@ public final class Order {
     /** Whether the customer is sent an e-mail at their billing address. */
     public boolean emailsCustomer() {
         return emailsCustomer;
+    }
+
+    /** The most installments the payer is offered on the checkout page; null when there is no limit. */
+    public MaxInstallments getMaxInstallments() {
+        return maxInstallments;
     }
 
     /** What the order is made up of. */

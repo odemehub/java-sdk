@@ -36,6 +36,7 @@ public abstract class CheckoutMessage extends Message {
     private final Boolean requiresShipping;
     private final Boolean locksCustomer;
     private final Boolean emailsCustomer;
+    private final MaxInstallments maxInstallments;
     private final List<String> clear;
 
     protected CheckoutMessage(Builder<?> builder) {
@@ -50,6 +51,7 @@ public abstract class CheckoutMessage extends Message {
         this.requiresShipping = builder.requiresShipping;
         this.locksCustomer = builder.locksCustomer;
         this.emailsCustomer = builder.emailsCustomer;
+        this.maxInstallments = builder.maxInstallments;
         this.clear = List.copyOf(builder.clear);
     }
 
@@ -72,6 +74,7 @@ public abstract class CheckoutMessage extends Message {
             "requires_shipping", requiresShipping,
             "locks_customer", locksCustomer,
             "emails_customer", emailsCustomer,
+            "max_installments", maxInstallments == null ? null : maxInstallments.toBody(),
             "items", Fields.each(items, Item::toBody)
         );
     }
@@ -105,6 +108,7 @@ public abstract class CheckoutMessage extends Message {
         protected Boolean requiresShipping;
         protected Boolean locksCustomer;
         protected Boolean emailsCustomer;
+        protected MaxInstallments maxInstallments;
         protected final List<String> clear = new ArrayList<>();
 
         protected abstract B self();
@@ -196,6 +200,17 @@ public abstract class CheckoutMessage extends Message {
          */
         public B emailsCustomer(boolean emailsCustomer) {
             this.emailsCustomer = emailsCustomer;
+            return self();
+        }
+
+        /**
+         * The most installments the payer is offered on the checkout page,
+         * for cards issued to people and to companies. Left out of a new one,
+         * there is no limit; sent on a change, it takes the place of the
+         * limits there were, and one with neither number set lifts them.
+         */
+        public B maxInstallments(MaxInstallments maxInstallments) {
+            this.maxInstallments = maxInstallments;
             return self();
         }
 

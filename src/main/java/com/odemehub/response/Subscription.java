@@ -23,6 +23,7 @@ public final class Subscription {
     private final boolean requiresShipping;
     private final boolean locksCustomer;
     private final boolean emailsCustomer;
+    private final MaxInstallments maxInstallments;
     private final Period period;
     private final Integer renewalLimit;
     private final int renewalsPaid;
@@ -51,6 +52,7 @@ public final class Subscription {
         this.requiresShipping = Read.bool(subscription.path("requires_shipping"));
         this.locksCustomer = Read.bool(subscription.path("locks_customer"));
         this.emailsCustomer = Read.bool(subscription.path("emails_customer"));
+        this.maxInstallments = MaxInstallments.in(subscription.path("max_installments"));
         this.period = Period.from(Read.optionalString(subscription.path("period")));
         this.renewalLimit = Read.optionalInteger(subscription.path("renewal_limit"));
         this.renewalsPaid = Read.integer(subscription.path("renewals_paid"));
@@ -149,6 +151,11 @@ public final class Subscription {
     /** Whether the customer is sent an e-mail at their billing address. */
     public boolean emailsCustomer() {
         return emailsCustomer;
+    }
+
+    /** The most installments the payer is offered on the checkout page; null when there is no limit. */
+    public MaxInstallments getMaxInstallments() {
+        return maxInstallments;
     }
 
     /** How often a renewal comes round. */

@@ -31,6 +31,7 @@ public final class PaymentLink {
     private final CurrencyType currencyType;
     private final List<Currency> currencies;
     private final boolean emailsCustomer;
+    private final MaxInstallments maxInstallments;
     private final boolean isActive;
     private final boolean isTest;
     private final String expiresAt;
@@ -57,6 +58,7 @@ public final class PaymentLink {
         this.currencyType = CurrencyType.from(Read.optionalString(link.path("currency_type")));
         this.currencies = Read.optionalList(link.path("currencies"), currency -> Currency.from(Read.optionalString(currency)));
         this.emailsCustomer = Read.bool(link.path("emails_customer"));
+        this.maxInstallments = MaxInstallments.in(link.path("max_installments"));
         this.isActive = Read.bool(link.path("is_active"));
         this.isTest = Read.bool(link.path("is_test"));
         this.expiresAt = Read.nonEmptyString(link.path("expires_at"));
@@ -153,6 +155,11 @@ public final class PaymentLink {
     /** Whether the payer is sent an e-mail, at the address they give on the checkout page, once their payment goes through. */
     public boolean emailsCustomer() {
         return emailsCustomer;
+    }
+
+    /** The most installments the payer is offered on the checkout page; null when there is no limit. */
+    public MaxInstallments getMaxInstallments() {
+        return maxInstallments;
     }
 
     /** Whether it takes payments: switched on and its last day not gone by. */

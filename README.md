@@ -16,14 +16,14 @@ Maven:
 <dependency>
     <groupId>com.odemehub</groupId>
     <artifactId>java-sdk</artifactId>
-    <version>1.0.6</version>
+    <version>1.0.7</version>
 </dependency>
 ```
 
 Gradle:
 
 ```groovy
-implementation 'com.odemehub:java-sdk:1.0.6'
+implementation 'com.odemehub:java-sdk:1.0.7'
 ```
 
 ## Yapılandırma
@@ -306,11 +306,24 @@ return "redirect:" + order.getCheckoutUrl();
 
 **Müşteri kilidi.** `locksCustomer(true)` verilirse ödeme sayfası müşteri bilgisi sormaz; gönderdiğiniz müşteriyi değiştirilemez şekilde gösterir ve ödemeyi onunla alır. Bu durumda fatura adresi eksiksiz olmalıdır; `requiresShipping(true)` ise gönderim adresi de (gönderilmezse fatura adresi kullanılır). Eksik alan varsa geçit `ValidationException` ile reddeder.
 
+**Taksit sınırı.** `maxInstallments(...)` ödeme sayfasında sunulan en fazla taksiti bireysel ve ticari kart için ayrı ayrı sınırlar: her biri 1–12, 1 yalnız tek çekim, `null` o kart tipinde sınır yok. Verilmezse sınır yoktur. Aynı alan `CreateSubscription` / `UpdateSubscription` ve `CreatePaymentLink` / `UpdatePaymentLink` builder'larında da vardır.
+
+```java
+import com.odemehub.request.MaxInstallments;
+
+CreateOrder.builder()
+    // ...
+    .maxInstallments(MaxInstallments.builder().individual(6).commercial(1).build())   // bireysel kartta en fazla 6 taksit, ticari kartta tek çekim
+    .build();
+```
+
+Değişiklikte (`updateOrder`, `updateSubscription`, `updatePaymentLink`) gönderilen sınır eskisinin yerine geçer, gönderilmezse eskisi kalır; iki değeri de boş `MaxInstallments.builder().build()` (`{"individual": null, "commercial": null}`) sınırı kaldırır. Yanıtta `getMaxInstallments()` (`getIndividual()`, `getCommercial()`) döner, sınır yoksa `null`'dır.
+
 Her `createOrder` çağrısı yeni bir sipariş ve yeni bir token açar; aynı referansla tekrar çağırsanız da önceki sipariş değişmez ve istek reddedilmez. Bankada vazgeçen müşteriyi tekrar ödemeye yollamak için yeni sipariş açabilirsiniz. Açık bir siparişi değiştirmek için `updateOrder(token)` kullanın; bunun için her yanıttaki token'ı saklayın.
 
 Ödeme tamamlanınca müşteri, 3D'dekiyle aynı biçimde `successUrl` adresinize döner: aynı üç alan gelir, sonucu yine `retrievePayments()` ile sorarsınız. Müşteri ödeme sayfasında karttan kaynaklı bir hata alırsa size dönmez, sayfada kalıp başka kartla dener.
 
-`response.Order` siparişi bütünüyle taşır: `getToken()`, `getReference()`, `getDescription()`, `getPaymentProviderToken()`, `getStatus()` (`OrderStatus.OPEN` / `PAID`), `requiresShipping()`, `locksCustomer()`, `emailsCustomer()`, `getItems()`, `getShippingMethod()` (müşterinin seçtiği, seçene kadar `null`), `getSubtotal()`, `getShippingAmount()`, `getTaxAmount()`, `getAmount()`, `getCurrency()`, `isTest()`, `getCreatedAt()`, `getCheckoutUrl()` (ödenebilir değilse `null`), ödeyen işlem `getTransaction()` (açıkken `null`), kupon `getDiscount()` ve müşteri `getCustomer()` (`getReference()` — referanssız açılan siparişte `null` —, `getBillingAddress()`, `getShippingAddress()`). Müşteri `OrderDetails` üzerinde de (`created.getCustomer()`) aynen durur; listelerde siparişin kendisindedir.
+`response.Order` siparişi bütünüyle taşır: `getToken()`, `getReference()`, `getDescription()`, `getPaymentProviderToken()`, `getStatus()` (`OrderStatus.OPEN` / `PAID`), `requiresShipping()`, `locksCustomer()`, `emailsCustomer()`, `getMaxInstallments()` (taksit sınırı, yoksa `null`), `getItems()`, `getShippingMethod()` (müşterinin seçtiği, seçene kadar `null`), `getSubtotal()`, `getShippingAmount()`, `getTaxAmount()`, `getAmount()`, `getCurrency()`, `isTest()`, `getCreatedAt()`, `getCheckoutUrl()` (ödenebilir değilse `null`), ödeyen işlem `getTransaction()` (açıkken `null`), kupon `getDiscount()` ve müşteri `getCustomer()` (`getReference()` — referanssız açılan siparişte `null` —, `getBillingAddress()`, `getShippingAddress()`). Müşteri `OrderDetails` üzerinde de (`created.getCustomer()`) aynen durur; listelerde siparişin kendisindedir.
 
 Kupon API'den gönderilmez; ödeyen kodu ödeme sayfasında girer. Kupon girildiyse `getDiscount()` kodu (`getCode()`) ve kalemlerden düşülen tutarı (`getAmount()`, siparişin para biriminde) verir, girilmediyse `null` döner. Siparişin `getSubtotal()`, `getTaxAmount()` ve `getAmount()` değerleri indirim düşülmüş hâlidir; kupon gönderim ücretinden düşülmez.
 
@@ -396,7 +409,7 @@ consulting.getAmount();       // null: tutarı ödeyen seçer
 consulting.getCurrencies();   // [TRY, USD, EUR]
 ```
 
-`response.PaymentLink`: `getToken()`, `getReference()`, `getDescription()`, `getPaymentProviderToken()`, `getAmountType()`, `getItemName()`, `getPredefinedAmounts()`, `getTaxRate()`, `getTaxMode()`, `getItems()`, `getSubtotal()`, `getTaxAmount()`, `getAmount()`, `getCurrency()`, `getCurrencyType()`, `getCurrencies()`, `emailsCustomer()`, `isActive()` (açık ve son günü geçmemiş), `isTest()`, `getExpiresAt()` (son an, ISO 8601 UTC), `getCheckoutUrl()` (ödenemiyorsa `null`), `getCreatedAt()`; sorgu yanıtında ayrıca `getTransactions()` (son 50 deneme), `getTransactionsCount()` ve `successful()`. Tutarı ödeyenin seçtiği linkte `getSubtotal()`, `getTaxAmount()` ve `getAmount()` `null` döner, `getItems()` boştur; `getItemName()` ve `getPredefinedAmounts()` kullanılmayan tipte `null`'dır. `getCurrencies()` `SELECTABLE` linkte `currency` dahil listedir, `FIXED` linkte `null`'dır.
+`response.PaymentLink`: `getToken()`, `getReference()`, `getDescription()`, `getPaymentProviderToken()`, `getAmountType()`, `getItemName()`, `getPredefinedAmounts()`, `getTaxRate()`, `getTaxMode()`, `getItems()`, `getSubtotal()`, `getTaxAmount()`, `getAmount()`, `getCurrency()`, `getCurrencyType()`, `getCurrencies()`, `emailsCustomer()`, `getMaxInstallments()` (taksit sınırı, yoksa `null`; bkz. [Sipariş](#sipariş-ödeme-sayfası)), `isActive()` (açık ve son günü geçmemiş), `isTest()`, `getExpiresAt()` (son an, ISO 8601 UTC), `getCheckoutUrl()` (ödenemiyorsa `null`), `getCreatedAt()`; sorgu yanıtında ayrıca `getTransactions()` (son 50 deneme), `getTransactionsCount()` ve `successful()`. Tutarı ödeyenin seçtiği linkte `getSubtotal()`, `getTaxAmount()` ve `getAmount()` `null` döner, `getItems()` boştur; `getItemName()` ve `getPredefinedAmounts()` kullanılmayan tipte `null`'dır. `getCurrencies()` `SELECTABLE` linkte `currency` dahil listedir, `FIXED` linkte `null`'dır.
 
 ```java
 import com.odemehub.request.RetrievePaymentLinks;
@@ -486,7 +499,7 @@ subscription.getCustomer().getReference();
 
 `RetrieveSubscriptions.byReference(...)`, `between(...)` ve `latest()` siparişteki gibi çalışır.
 
-`locksCustomer(true)` siparişteki gibi çalışır; yanıt da siparişteki gibi `requiresShipping()`, `locksCustomer()` ve `emailsCustomer()` taşır. `emailsCustomer(true)` açıkken dönem ödemesi alınamazsa ödeme sayfasının bağlantısı doğrudan müşteriye gider, size ayrıca e-posta gelmez.
+`locksCustomer(true)` siparişteki gibi çalışır; yanıt da siparişteki gibi `requiresShipping()`, `locksCustomer()` ve `emailsCustomer()` taşır. Taksit sınırı (`maxInstallments`, yanıtta `getMaxInstallments()`) da siparişteki gibidir. `emailsCustomer(true)` açıkken dönem ödemesi alınamazsa ödeme sayfasının bağlantısı doğrudan müşteriye gider, size ayrıca e-posta gelmez.
 
 Ödeyen ilk ödemede kupon girdiyse `getDiscount()` o kuponu (`getCode()`, `getAmount()`) verir, girmediyse `null` döner. Kupon yalnız ilk ödemeye uygulanır: aboneliğin kendi `getSubtotal()`, `getTaxAmount()` ve `getAmount()` değerleri indirimsizdir, ilk ödemede çekilen tutar ilk dönemin `getRenewal().getAmount()` değerindedir.
 
@@ -782,6 +795,12 @@ refund.getRefund().getType();     // RefundType.REFUND
 refund.getRefund().getAmount();   // 100.00
 refund.getTransaction().getPaymentStatus();   // PaymentStatus.PARTIALLY_REFUNDED
 ```
+
+## 1.0.7'deki değişiklikler
+
+Eklenenler:
+
+- **Taksit sınırı:** `MaxInstallments.builder()`; sipariş, abonelik ve ödeme linki builder'larında `maxInstallments(...)`; `Order`, `Subscription` ve `PaymentLink` yanıtlarında `getMaxInstallments()` (yoksa `null`). Güncellemede `MaxInstallments.builder().build()` sınırı kaldırır.
 
 ## 1.0.6'daki değişiklikler
 
