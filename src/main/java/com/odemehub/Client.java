@@ -1,27 +1,10 @@
 package com.odemehub;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.odemehub.exception.AuthenticationException;
-import com.odemehub.exception.ForbiddenException;
-import com.odemehub.exception.NotFoundException;
-import com.odemehub.exception.RateLimitException;
 import com.odemehub.exception.SignatureException;
-import com.odemehub.exception.TransportException;
-import com.odemehub.exception.UnexpectedResponseException;
-import com.odemehub.exception.ValidationException;
 import com.odemehub.request.Message;
-import java.io.IOException;
-import java.net.URI;
 import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
 
 /**
  * The gateway, as the merchant's application talks to it. Every request
@@ -36,11 +19,9 @@ import java.util.Map;
  */
 public final class Client {
 
-    private static final ObjectMapper JSON = new ObjectMapper();
-
     private final Options options;
-    private final HttpClient http;
     private final Signature signature;
+    private final Transport transport;
 
     public Client(Options options) {
         this(options, HttpClient.newBuilder().connectTimeout(options.getTimeout()).build());
@@ -52,8 +33,8 @@ public final class Client {
      */
     public Client(Options options, HttpClient http) {
         this.options = options;
-        this.http = http;
         this.signature = new Signature(options.getApiSecret());
+        this.transport = new Transport(http, signature, options.getApiKey(), options.getTimeout());
     }
 
     /**
@@ -281,6 +262,111 @@ public final class Client {
     }
 
     /**
+     * The providers a payment account may be added for, each with the
+     * settings it asks for. Open only on a team a partner opened, like every
+     * endpoint down to {@code createLogo}; any other team is turned away with
+     * a {@code ForbiddenException}.
+     */
+    public com.odemehub.response.ProviderList retrieveProviders(com.odemehub.request.RetrieveProviders providers) {
+        return com.odemehub.response.ProviderList.fromBody(send(providers));
+    }
+
+    /**
+     * Add a payment account. Its settings are not tried against the provider
+     * here. Keep the token it comes back with: a payment names the account
+     * by it as its {@code paymentProviderToken}.
+     */
+    public com.odemehub.response.PaymentProviderDetails createPaymentProvider(com.odemehub.request.CreatePaymentProvider paymentProvider) {
+        return com.odemehub.response.PaymentProviderDetails.fromBody(send(paymentProvider));
+    }
+
+    /**
+     * Payment accounts as they stand — by token, or every account of the
+     * team's — never with their settings. The answer is not cut into pages.
+     */
+    public com.odemehub.response.PaymentProviderList retrievePaymentProviders(com.odemehub.request.RetrievePaymentProviders paymentProviders) {
+        return com.odemehub.response.PaymentProviderList.fromBody(send(paymentProviders));
+    }
+
+    /**
+     * Rename a payment account, replace some of its settings, or make it the
+     * default. Only what is sent is written.
+     */
+    public com.odemehub.response.PaymentProviderDetails updatePaymentProvider(com.odemehub.request.UpdatePaymentProvider paymentProvider) {
+        return com.odemehub.response.PaymentProviderDetails.fromBody(send(paymentProvider));
+    }
+
+    /**
+     * Remove a payment account.
+     */
+    public com.odemehub.response.DeletedPaymentProvider deletePaymentProvider(com.odemehub.request.DeletePaymentProvider paymentProvider) {
+        return com.odemehub.response.DeletedPaymentProvider.fromBody(send(paymentProvider));
+    }
+
+    /**
+     * Put down an address the gateway posts webhooks to, for the events
+     * named. What is posted there is signed with this team's secret.
+     */
+    public com.odemehub.response.WebhookEndpointDetails createWebhookEndpoint(com.odemehub.request.CreateWebhookEndpoint webhookEndpoint) {
+        return com.odemehub.response.WebhookEndpointDetails.fromBody(send(webhookEndpoint));
+    }
+
+    /**
+     * Webhook addresses as they stand — by token, or every address of the
+     * team's. The answer is not cut into pages.
+     */
+    public com.odemehub.response.WebhookEndpointList retrieveWebhookEndpoints(com.odemehub.request.RetrieveWebhookEndpoints webhookEndpoints) {
+        return com.odemehub.response.WebhookEndpointList.fromBody(send(webhookEndpoints));
+    }
+
+    /**
+     * Change a webhook address, the events it hears or whether it is
+     * switched on. Only what is sent is written.
+     */
+    public com.odemehub.response.WebhookEndpointDetails updateWebhookEndpoint(com.odemehub.request.UpdateWebhookEndpoint webhookEndpoint) {
+        return com.odemehub.response.WebhookEndpointDetails.fromBody(send(webhookEndpoint));
+    }
+
+    /**
+     * Take a webhook address away.
+     */
+    public com.odemehub.response.DeletedWebhookEndpoint deleteWebhookEndpoint(com.odemehub.request.DeleteWebhookEndpoint webhookEndpoint) {
+        return com.odemehub.response.DeletedWebhookEndpoint.fromBody(send(webhookEndpoint));
+    }
+
+    /**
+     * Rename the team, or give it another timezone. Only what is sent is
+     * written.
+     */
+    public com.odemehub.response.TeamDetails updateTeam(com.odemehub.request.UpdateTeam team) {
+        return com.odemehub.response.TeamDetails.fromBody(send(team));
+    }
+
+    /**
+     * How the team's checkout pages are dressed.
+     */
+    public com.odemehub.response.CheckoutDesignDetails retrieveCheckoutDesign(com.odemehub.request.RetrieveCheckoutDesign checkoutDesign) {
+        return com.odemehub.response.CheckoutDesignDetails.fromBody(send(checkoutDesign));
+    }
+
+    /**
+     * Change how the team's checkout pages are dressed; every payer sees it
+     * from the next page they open. Only what is sent is written.
+     */
+    public com.odemehub.response.CheckoutDesignDetails updateCheckoutDesign(com.odemehub.request.UpdateCheckoutDesign checkoutDesign) {
+        return com.odemehub.response.CheckoutDesignDetails.fromBody(send(checkoutDesign));
+    }
+
+    /**
+     * Keep a logo for the team's checkout. The address it comes back with is
+     * what {@code updateCheckoutDesign} takes as its {@code logo}; kept alone,
+     * it is shown nowhere.
+     */
+    public com.odemehub.response.LogoDetails createLogo(com.odemehub.request.CreateLogo logo) {
+        return com.odemehub.response.LogoDetails.fromBody(send(logo));
+    }
+
+    /**
      * Read a word the gateway posted to one of the merchant's webhook
      * addresses. Hand it the request exactly as it arrived — the method, the
      * path of the address it came to (without the query string), the raw
@@ -298,7 +384,7 @@ public final class Client {
             throw new SignatureException("Bildirimin imzası doğrulanamadı; bildirim ödeme geçidinden gelmemiş olabilir.");
         }
 
-        return com.odemehub.response.Webhook.fromBody(decode(new String(payload, StandardCharsets.UTF_8), 0));
+        return com.odemehub.response.Webhook.fromBody(Transport.decode(new String(payload, StandardCharsets.UTF_8), 0));
     }
 
     public com.odemehub.response.Webhook webhook(String method, String path, String payload, String timestamp, String signature) {
@@ -320,171 +406,10 @@ public final class Client {
     }
 
     /**
-     * Sign what is being asked for, hand it to the gateway and read the answer
-     * back. The body is signed exactly as it is sent, byte for byte, together
-     * with the moment, the method and the path, so it is written once and used
-     * for both.
+     * Hand a message to this team's gateway and read the answer back, signed
+     * and checked with the team's secret.
      */
     private JsonNode send(Message message) {
-        String method = message.method();
-        String path = options.path(message.path());
-        byte[] body;
-
-        try {
-            body = JSON.writeValueAsBytes(message.toBody());
-        } catch (JsonProcessingException exception) {
-            throw new UnexpectedResponseException("İstek gövdesi JSON olarak yazılamadı: " + exception.getMessage(), 0);
-        }
-
-        HttpRequest.Builder request = HttpRequest.newBuilder(URI.create(options.url(message.path())))
-            .timeout(options.getTimeout())
-            .header(Options.API_KEY_HEADER, options.getApiKey())
-            .header("Accept", "application/json")
-            .header("Content-Type", "application/json")
-            .POST(HttpRequest.BodyPublishers.ofByteArray(body));
-
-        signature.headers(method, path, body).forEach(request::header);
-
-        HttpResponse<byte[]> response;
-
-        try {
-            response = http.send(request.build(), HttpResponse.BodyHandlers.ofByteArray());
-        } catch (IOException exception) {
-            String reason = exception.getMessage() != null ? exception.getMessage() : exception.getClass().getSimpleName();
-
-            throw new TransportException("Ödeme geçidine ulaşılamadı: " + reason, exception);
-        } catch (InterruptedException exception) {
-            Thread.currentThread().interrupt();
-            throw new TransportException("Ödeme geçidine giden istek yarıda kesildi.", exception);
-        }
-
-        return read(response, method, path);
-    }
-
-    /**
-     * Read the answer. An outcome is answered with 200 and signed, however the
-     * payment itself turned out: a payment the provider declined is an
-     * outcome like any other and comes back rather than being thrown. The
-     * signature is checked over the method and the path of the request, the
-     * answer's own moment and its body.
-     *
-     * <p>Anything else is a refusal — the request never became a payment — and
-     * the status says which kind. The gateway signs some of those too, but a
-     * signature does not make a refusal an outcome, so the status is read
-     * first.
-     */
-    private JsonNode read(HttpResponse<byte[]> response, String method, String path) {
-        int status = response.statusCode();
-        String payload = new String(response.body(), StandardCharsets.UTF_8);
-
-        if (status == 200) {
-            boolean verified = signature.verify(
-                method,
-                path,
-                response.body(),
-                header(response, Signature.TIMESTAMP_HEADER),
-                header(response, Signature.HEADER)
-            );
-
-            if (!verified) {
-                throw new SignatureException("Yanıtın imzası doğrulanamadı; yanıt ödeme geçidinden gelmemiş olabilir.");
-            }
-
-            return decode(payload, status);
-        }
-
-        JsonNode body = parse(payload);
-        JsonNode result = body == null ? null : body.path("result");
-        String message = refusalMessage(body, result);
-
-        switch (status) {
-            case 401:
-                throw new AuthenticationException(message);
-            case 403:
-                throw new ForbiddenException(message);
-            case 404:
-                throw new NotFoundException(message);
-            case 422:
-                throw new ValidationException(message, refusalErrors(body, result));
-            case 429:
-                throw new RateLimitException(message, retryAfter(response));
-            default:
-                throw new UnexpectedResponseException(message, status);
-        }
-    }
-
-    /**
-     * A header, or null when the answer did not carry it.
-     */
-    private static String header(HttpResponse<byte[]> response, String name) {
-        return response.headers().firstValue(name).filter(value -> !value.isEmpty()).orElse(null);
-    }
-
-    /**
-     * How long the gateway asked to wait before trying again, in seconds.
-     */
-    private static Integer retryAfter(HttpResponse<byte[]> response) {
-        String value = header(response, "Retry-After");
-
-        return value != null && value.matches("[0-9]{1,9}") ? Integer.valueOf(value) : null;
-    }
-
-    /**
-     * What a refusal says. The gateway answers in the one shape it answers
-     * everything in, so what went wrong is found under {@code result}.
-     */
-    private static String refusalMessage(JsonNode body, JsonNode result) {
-        if (result != null && result.path("message").isTextual()) {
-            return result.path("message").textValue();
-        }
-
-        if (body != null && body.path("message").isTextual()) {
-            return body.path("message").textValue();
-        }
-
-        return "Ödeme geçidi isteği reddetti.";
-    }
-
-    /**
-     * Which fields a refusal is about, each with the reasons it was refused.
-     */
-    private static Map<String, List<String>> refusalErrors(JsonNode body, JsonNode result) {
-        JsonNode errors = result != null && result.path("errors").isObject()
-            ? result.path("errors")
-            : body != null ? body.path("errors") : null;
-        Map<String, List<String>> fields = new LinkedHashMap<>();
-
-        if (errors != null && errors.isObject()) {
-            errors.properties().forEach(field -> {
-                List<String> reasons = new ArrayList<>();
-                field.getValue().elements().forEachRemaining(reason -> reasons.add(reason.asText()));
-                fields.put(field.getKey(), List.copyOf(reasons));
-            });
-        }
-
-        return fields;
-    }
-
-    /**
-     * Read a body the signature has already vouched for.
-     */
-    private static JsonNode decode(String payload, int status) {
-        JsonNode body = parse(payload);
-
-        if (body == null) {
-            throw new UnexpectedResponseException("Ödeme geçidi " + status + " durumuyla okunamayan bir yanıt döndü.", status);
-        }
-
-        return body;
-    }
-
-    private static JsonNode parse(String payload) {
-        try {
-            JsonNode body = JSON.readTree(payload);
-
-            return body != null && body.isObject() ? body : null;
-        } catch (JsonProcessingException exception) {
-            return null;
-        }
+        return transport.send(message, options.path(message.path()), options.url(message.path()));
     }
 }

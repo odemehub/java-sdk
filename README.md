@@ -16,14 +16,14 @@ Maven:
 <dependency>
     <groupId>com.odemehub</groupId>
     <artifactId>java-sdk</artifactId>
-    <version>1.0.7</version>
+    <version>1.0.8</version>
 </dependency>
 ```
 
 Gradle:
 
 ```groovy
-implementation 'com.odemehub:java-sdk:1.0.7'
+implementation 'com.odemehub:java-sdk:1.0.8'
 ```
 
 ## Yapılandırma
@@ -88,6 +88,21 @@ Sabit değer kümeleri `com.odemehub.enums` paketindeki enum'lardır: `Currency`
 | `updateBankAccount` | `POST update-bank-account/{token}` | `BankAccountDetails` |
 | `deleteBankAccount` | `POST delete-bank-account/{token}` | `DeletedBankAccount` |
 | `retrieveBankTransactions` | `POST retrieve-bank-transactions` | `BankTransactionList` |
+| `retrieveProviders` | `POST retrieve-providers` | `ProviderList` |
+| `createPaymentProvider` | `POST create-payment-provider` | `PaymentProviderDetails` |
+| `retrievePaymentProviders` | `POST retrieve-payment-providers` | `PaymentProviderList` |
+| `updatePaymentProvider` | `POST update-payment-provider/{token}` | `PaymentProviderDetails` |
+| `deletePaymentProvider` | `POST delete-payment-provider/{token}` | `DeletedPaymentProvider` |
+| `createWebhookEndpoint` | `POST create-webhook-endpoint` | `WebhookEndpointDetails` |
+| `retrieveWebhookEndpoints` | `POST retrieve-webhook-endpoints` | `WebhookEndpointList` |
+| `updateWebhookEndpoint` | `POST update-webhook-endpoint/{token}` | `WebhookEndpointDetails` |
+| `deleteWebhookEndpoint` | `POST delete-webhook-endpoint/{token}` | `DeletedWebhookEndpoint` |
+| `updateTeam` | `POST update-team` | `TeamDetails` |
+| `retrieveCheckoutDesign` | `POST retrieve-checkout-design` | `CheckoutDesignDetails` |
+| `updateCheckoutDesign` | `POST update-checkout-design` | `CheckoutDesignDetails` |
+| `createLogo` | `POST create-logo` | `LogoDetails` |
+
+`retrieveProviders`'dan `createLogo`'ya kadarki uçlar yalnız bir iş ortağının açtığı çalışma alanlarında çalışır; bkz. [İş ortakları](#iş-ortakları).
 
 Her kaynağa aynı yoldan ulaşılır: `create-*` her çağrıda yeni bir kayıt açar ve yeni token'ını döner (aynı referansla çağırsanız da), `retrieve-*` token'la, sizin referansınızla ya da en fazla yedi günlük bir tarih aralığıyla sorar ve her zaman liste döner (eşleşen yoksa boş liste), `update-*/{token}` yalnızca gönderdiğiniz alanları değiştirir. Sorgu istekleri `byToken(...)`, `byReference(...)`, `between(...)` ya da `latest()` ile kurulur; yanıt her zaman sayfalıdır, sayfa `.page(...)` / `.perPage(...)` ile seçilir (bkz. [Sayfa sayfa sorgulamak](#sayfa-sayfa-sorgulamak)). Bütün uçlar POST'tur. Silinebilen kaynaklar kayıtlı kart ve banka hesabıdır. Link ödemeleri yalnızca sorgulanır: onları ödeyen açar. Banka hesapları ve hareketleri bu kalıbın dışındadır; bkz. [Banka hareketleri](#banka-hareketleri).
 
@@ -795,6 +810,83 @@ refund.getRefund().getType();     // RefundType.REFUND
 refund.getRefund().getAmount();   // 100.00
 refund.getTransaction().getPaymentStatus();   // PaymentStatus.PARTIALLY_REFUNDED
 ```
+
+## İş ortakları
+
+ödemehub'ı kendi uygulamanızın arkasında kullanan iş ortaklarına ayrı bir anahtar çifti verilir. Bu anahtarla `PartnerClient` kendi müşterileriniz için çalışma alanı açar, sorgular, modüllerini açıp kapatır ve siler. Çalışma alanının içindeki her iş (ödeme hesabı, webhook adresi, ödeme sayfası tasarımı, ödemeler) o çalışma alanının kendi anahtarlarıyla, sıradan `Client` üzerinden yapılır; açılan her çalışma alanı bu anahtarlarla birlikte döner. İş ortağı anahtarları paneldeki **Ayarlar → İş Ortaklığı** sayfasındadır. `PartnerClient` takım almaz, istekleri `/api/partner/...` altına gönderir; imza, yanıt doğrulaması ve hatalar `Client` ile aynıdır.
+
+```java
+import com.odemehub.Client;
+import com.odemehub.PartnerClient;
+import com.odemehub.PartnerOptions;
+import com.odemehub.request.CreateLogo;
+import com.odemehub.request.CreatePaymentProvider;
+import com.odemehub.request.CreateTeam;
+import com.odemehub.request.CreateWebhookEndpoint;
+import com.odemehub.request.DeleteTeam;
+import com.odemehub.request.RetrieveProviders;
+import com.odemehub.request.RetrieveTeams;
+import com.odemehub.request.UpdateCheckoutDesign;
+import com.odemehub.request.UpdateTeamModules;
+
+PartnerClient partner = new PartnerClient(PartnerOptions.builder()
+    .baseUrl("https://sandbox.odemehub.com")
+    .apiKey(System.getenv("ODEMEHUB_PARTNER_API_KEY"))
+    .apiSecret(System.getenv("ODEMEHUB_PARTNER_API_SECRET"))
+    .build());
+
+var team = partner.createTeam(CreateTeam.builder()   // her alan isteğe bağlı
+    .name("Ayşe Butik")
+    .timezone("Europe/Istanbul")
+    .modules("api", "orders", "bank_transactions")
+    .build()).getTeam();
+team.getSlug();        // "4829301756": Çalışma Alanı Kimliği
+team.getApiKey();      // çalışma alanının kendi anahtarları; saklayın
+team.getApiSecret();
+
+Client client = partner.teamClient(team);   // aynı baseUrl, team = slug, çalışma alanının anahtarları
+
+client.retrieveProviders(new RetrieveProviders()).getProviders();   // eklenebilen sağlayıcılar ve istedikleri ayarlar
+var account = client.createPaymentProvider(CreatePaymentProvider.builder()
+    .provider("iyzico")
+    .name("iyzico")
+    .settings(Map.of("test_api_key", "...", "test_api_secret", "..."))   // test ayarları test_ önekiyle
+    .build()).getPaymentProvider();
+account.getToken();   // ödemelerde paymentProviderToken
+
+client.createWebhookEndpoint(CreateWebhookEndpoint.builder()
+    .url("https://ornek.com/odemehub/webhook")
+    .events("order.paid", "transaction.successful")   // ya da WebhookEvent.ORDER_PAID, ...
+    .build());
+
+String logo = client.createLogo(CreateLogo.fromBytes(Files.readAllBytes(Path.of("logo.png")))).getUrl();
+client.updateCheckoutDesign(UpdateCheckoutDesign.builder()   // yalnız verilenler değişir
+    .logo(logo)
+    .accentColor("#1f6feb")
+    .termsUrl(null)   // null kaldırır; hiç çağrılmazsa olduğu gibi kalır
+    .build());
+
+var page = partner.retrieveTeams(RetrieveTeams.all().perPage(50));   // ya da bySlugs(...); sayfalı
+page.getPagination().hasMorePages();
+partner.updateTeamModules(new UpdateTeamModules(team.getSlug(), "api", "orders"));   // gönderilmeyenler kapanır
+partner.deleteTeam(new DeleteTeam(team.getSlug()));   // her şeyiyle, geri dönüşsüz
+```
+
+- `retrieveProviders`'dan `createLogo`'ya kadarki gateway uçları (ödeme hesapları, webhook adresleri, `updateTeam`, ödeme sayfası tasarımı ve logo) yalnız bir iş ortağının açtığı çalışma alanlarında çalışır; başka bir çalışma alanının anahtarıyla `ForbiddenException` (403) alır.
+- `retrievePaymentProviders` ve `retrieveWebhookEndpoints` sayfalı değildir: `all()` hepsini, `byTokens(...)` en fazla 50 token'ı sorar. Ödeme hesabının ayarları hiçbir yanıtta dönmez.
+- `updatePaymentProvider` ile `isDefault(true)` hesabı varsayılan yapar; varsayılanlık başka bir hesap varsayılan yapılınca kalkar.
+- Logo base64 olarak gönderilir (JPG, PNG ya da WEBP; en fazla 2 MB ve 3000 piksel); dönen adres `updateCheckoutDesign`'da `logo` olarak verilmeden hiçbir yerde görünmez.
+- İş ortağı yalnız `api`, `orders`, `subscription`, `payment_links`, `saved_cards` ve `bank_transactions` modüllerini açıp kapatabilir; diğerleri `ValidationException` (422) alır, çalışma alanında açıksa olduğu gibi kalır. Sandbox'ta her çalışma alanı bütün modüller açık başlar ve `updateTeamModules` `ForbiddenException` (403) alır.
+- Başka bir iş ortağının ya da var olmayan bir çalışma alanının numarası `NotFoundException` (404) alır.
+
+## 1.0.8'deki değişiklikler
+
+Eklenenler:
+
+- **İş ortağı istemcisi:** `PartnerClient` ve `PartnerOptions` (takım yok, `/api/partner/...`); `createTeam`, `retrieveTeams`, `updateTeamModules`, `deleteTeam` uçları; `CreateTeam`, `RetrieveTeams`, `UpdateTeamModules`, `DeleteTeam` istekleri; `PartnerTeamDetails`, `PartnerTeamList`, `PartnerTeam`, `DeletedTeam` yanıtları. `teamClient(PartnerTeam)` açılan çalışma alanının `Client`'ını kurar.
+- **Yalnız iş ortağı çalışma alanlarına açık uçlar:** `retrieveProviders`, `createPaymentProvider`, `retrievePaymentProviders`, `updatePaymentProvider`, `deletePaymentProvider`, `createWebhookEndpoint`, `retrieveWebhookEndpoints`, `updateWebhookEndpoint`, `deleteWebhookEndpoint`, `updateTeam`, `retrieveCheckoutDesign`, `updateCheckoutDesign`, `createLogo`; aynı adlı istekler ve `ProviderList`, `Provider`, `ProviderField`, `PaymentProviderDetails`, `PaymentProviderList`, `PaymentProvider`, `DeletedPaymentProvider`, `WebhookEndpointDetails`, `WebhookEndpointList`, `WebhookEndpoint`, `DeletedWebhookEndpoint`, `TeamDetails`, `Team`, `CheckoutDesignDetails`, `CheckoutDesign`, `LogoDetails` yanıtları. Bkz. [İş ortakları](#iş-ortakları).
+
+Kırıcı değişiklik yoktur; mevcut kod değişmeden çalışır.
 
 ## 1.0.7'deki değişiklikler
 

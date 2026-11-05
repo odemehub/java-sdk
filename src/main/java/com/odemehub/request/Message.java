@@ -11,8 +11,9 @@ import java.util.Map;
 public abstract class Message {
 
     /**
-     * The endpoint this is sent to, under the team's gateway, with the token
-     * in the address where the endpoint takes one.
+     * The endpoint this is sent to, under the team's gateway — or, for a
+     * partner's request, under the partner's endpoints — with the token or
+     * the team's number in the address where the endpoint takes one.
      */
     public abstract String path();
 
